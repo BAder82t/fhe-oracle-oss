@@ -1,0 +1,11 @@
+library,library_version,circuit,seed,verdict,max_error,regime,strategy_used,evals,wall_seconds
+tenseal,0.3.16,lr_d8_taylor3_sigmoid,41,FAIL,133.85682950051287,standard,cma_es,521,47.591824105
+tenseal,0.3.16,lr_d8_taylor3_sigmoid,42,FAIL,140.13529804202156,standard,cma_es,521,55.68165190100001
+tenseal,0.3.16,lr_d8_taylor3_sigmoid,43,FAIL,133.49101424946517,distant_defect,robust_cma_es,521,51.11539031500001
+tenseal,0.3.16,lr_d8_taylor3_sigmoid,44,FAIL,137.9243528658291,distant_defect,robust_cma_es,521,48.047221647000015
+tenseal,0.3.16,lr_d8_taylor3_sigmoid,45,FAIL,130.35684885364236,distant_defect,robust_cma_es,521,39.928692559999945
+openfhe,unknown,lr_d8_taylor3_sigmoid,41,FAIL,133.85464563509666,standard,cma_es,521,96.76513158500006
+openfhe,unknown,lr_d8_taylor3_sigmoid,42,FAIL,140.13301257575287,standard,cma_es,521,86.14204737200009
+openfhe,unknown,lr_d8_taylor3_sigmoid,43,FAIL,133.48883528516578,distant_defect,robust_cma_es,521,73.31971228199995
+openfhe,unknown,lr_d8_taylor3_sigmoid,44,FAIL,137.9221037572016,distant_defect,robust_cma_es,521,73.556919117
+openfhe,unknown,lr_d8_taylor3_sigmoid,45,FAIL,130.35479837431765,distant_defect,robust_cma_es,521,75.94311053399997

@@ -1,0 +1,22 @@
+FHE Oracle
+Copyright (C) 2026 Bader Issaei / VaultBytes Innovations Ltd
+
+Licensed under the GNU Affero General Public Licence v3.0
+(AGPL-3.0-or-later). Commercial licences available.
+
+Patent status
+-------------
+Patent pending: PCT/IB2026/053378
+"System and Method for Adversarial Noise-Guided Differential
+Testing of Fully Homomorphic Encryption Programs"
+
+The AGPL-3.0 distribution of fhe-oracle is subject to AGPL's
+standard patent grant (AGPL-3.0 §11) for AGPL-compatible
+downstream use. Commercial licences with an explicit patent
+grant are available separately for non-AGPL deployments. See
+COMMERCIAL.md.
+
+Contact
+-------
+For commercial licensing enquiries: b@vaultbytes.com
+Product page: https://vaultbytes.com/oracle.html

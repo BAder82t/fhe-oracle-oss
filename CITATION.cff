@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "If you use this software in your research, please cite the accompanying paper."
+authors:
+  - family-names: "Alissaei"
+    given-names: "Bader"
+    affiliation: "VaultBytes Innovations Ltd."
+    email: "b@vaultbytes.com"
+title: "fhe-oracle: Adversarial and Empirical Differential Testing for CKKS Programs"
+version: 1.0.0
+date-released: 2026-04-18
+url: "https://github.com/BAder82t/fhe-oracle"
+repository-code: "https://github.com/BAder82t/fhe-oracle"
+license: AGPL-3.0-or-later
+preferred-citation:
+  type: article
+  authors:
+    - family-names: "Alissaei"
+      given-names: "Bader"
+      affiliation: "VaultBytes Innovations Ltd."
+  title: "Adversarial and Empirical Differential Testing for CKKS Programs: Where Directed Search Helps, and Where It Doesn’t"
+  year: 2026
+  month: 4
+  url: "https://github.com/BAder82t/fhe-oracle"

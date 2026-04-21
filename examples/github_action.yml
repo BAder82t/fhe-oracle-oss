@@ -1,0 +1,50 @@
+# Copy this into .github/workflows/fhe-precision.yml in your project.
+#
+# Creates a PR-blocking check that fails when FHE Oracle finds an input
+# causing divergence above ORACLE_THRESHOLD.
+name: FHE Precision Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  fhe-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install FHE Oracle
+        run: pip install fhe-oracle
+
+      - name: Run Oracle
+        run: python oracle_check.py
+        env:
+          ORACLE_THRESHOLD: "0.01"
+          ORACLE_N_TRIALS: "500"
+
+# -----------------------------------------------------------------------------
+# Drop oracle_check.py at your repo root:
+#
+#   import os
+#   from fhe_oracle import FHEOracle
+#   from my_model import plaintext_fn, fhe_fn  # your code
+#
+#   oracle = FHEOracle(
+#       plaintext_fn=plaintext_fn,
+#       fhe_fn=fhe_fn,
+#       input_dim=10,
+#       input_bounds=[(-3.0, 3.0)] * 10,
+#   )
+#   result = oracle.run(
+#       n_trials=int(os.environ.get("ORACLE_N_TRIALS", "500")),
+#       threshold=float(os.environ.get("ORACLE_THRESHOLD", "0.01")),
+#   )
+#   print(result)
+#   raise SystemExit(0 if result.verdict == "PASS" else 1)

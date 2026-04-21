@@ -1,0 +1,48 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fhe-oracle"
+version = "0.5.0"
+description = "Adversarial precision testing for FHE programs"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "AGPL-3.0-or-later" }
+authors = [
+    { name = "Bader Issaei", email = "b@vaultbytes.com" },
+]
+keywords = ["fhe", "homomorphic-encryption", "ckks", "testing", "cma-es", "adversarial"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Security :: Cryptography",
+    "Topic :: Software Development :: Testing",
+]
+dependencies = [
+    "cma>=3.3.0",
+    "numpy>=1.22.0",
+    "scipy>=1.7.0",
+]
+
+[project.optional-dependencies]
+tenseal = ["tenseal>=0.3.14"]
+openfhe = ["openfhe"]
+concrete = ["concrete-ml>=1.0.0"]
+sklearn = ["scikit-learn>=1.0"]
+dev = ["pytest>=7.0", "pytest-cov", "build", "twine"]
+
+[project.urls]
+Homepage = "https://github.com/BAder82t/fhe-oracle"
+Issues = "https://github.com/BAder82t/fhe-oracle/issues"
+Commercial = "https://vaultbytes.com/oracle.html"
+
+[tool.setuptools.packages.find]
+include = ["fhe_oracle*"]
+exclude = ["tests*", "benchmarks*", "research*"]

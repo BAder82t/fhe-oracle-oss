@@ -1,0 +1,6 @@
+library,library_version,circuit,seed,verdict,max_error,regime,strategy_used,evals,wall_seconds
+pyfhel,3.5.0,ckks-taylor3,41,FAIL,4.195714689656867,standard,cma_es,521,41.80170389399996
+pyfhel,3.5.0,ckks-taylor3,42,FAIL,4.266627049579892,standard,cma_es,521,41.613619226999845
+pyfhel,3.5.0,ckks-taylor3,43,FAIL,4.209729803721784,standard,cma_es,521,48.830184146999954
+pyfhel,3.5.0,ckks-taylor3,44,FAIL,4.2285213365734045,standard,cma_es,521,51.02668377300006
+pyfhel,3.5.0,ckks-taylor3,45,FAIL,4.242127403241394,standard,cma_es,521,50.91948652400015

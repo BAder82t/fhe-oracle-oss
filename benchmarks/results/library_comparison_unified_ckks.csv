@@ -1,0 +1,16 @@
+library,library_version,circuit,seed,verdict,max_error,regime,strategy_used,evals,wall_seconds
+tenseal,0.3.16,unified-squared-dot,41,FAIL,0.0021972745169023256,standard,cma_es,521,17.554193008
+tenseal,0.3.16,unified-squared-dot,42,FAIL,0.002173798120054471,standard,cma_es,521,17.668643549000002
+tenseal,0.3.16,unified-squared-dot,43,FAIL,0.002221492008629866,standard,cma_es,521,18.053815842
+tenseal,0.3.16,unified-squared-dot,44,FAIL,0.0022047206440447553,standard,cma_es,521,17.787089049000002
+tenseal,0.3.16,unified-squared-dot,45,FAIL,0.0021089355240633267,standard,cma_es,521,17.640218673999996
+openfhe,unknown,unified-squared-dot,41,PASS,2.735268367359822e-08,standard,cma_es,521,20.863141134999992
+openfhe,unknown,unified-squared-dot,42,PASS,1.568869834045472e-08,standard,cma_es,521,22.017954926
+openfhe,unknown,unified-squared-dot,43,PASS,7.94739207776729e-09,standard,cma_es,521,22.080747134999996
+openfhe,unknown,unified-squared-dot,44,PASS,1.7143918285000836e-08,standard,cma_es,521,21.051772634999992
+openfhe,unknown,unified-squared-dot,45,PASS,3.2324436460839934e-09,standard,cma_es,521,21.218906010000012
+pyfhel,3.5.0,unified-squared-dot,41,FAIL,0.001370733070245933,standard,cma_es,521,44.56016422799999
+pyfhel,3.5.0,unified-squared-dot,42,FAIL,0.0012535508997189027,standard,cma_es,521,43.62307806199999
+pyfhel,3.5.0,unified-squared-dot,43,FAIL,0.001344166221940668,standard,cma_es,521,43.278950434999956
+pyfhel,3.5.0,unified-squared-dot,44,FAIL,0.0012971346867516331,standard,cma_es,521,43.943890979
+pyfhel,3.5.0,unified-squared-dot,45,FAIL,0.0013022857077089611,standard,cma_es,521,46.53549860300001

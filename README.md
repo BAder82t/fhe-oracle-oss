@@ -2,18 +2,17 @@
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 [![Commercial license available](https://img.shields.io/badge/commercial-available-brightgreen.svg)](./COMMERCIAL.md)
-[![Patent pending](https://img.shields.io/badge/patent-PCT%2FIB2026%2F053378-orange.svg)](./NOTICE)
 
 Adversarial precision testing for Fully Homomorphic Encryption.
 Finds CKKS bugs that random testing misses.
 
 ## FHE library leaderboard
 
-### 🎯 Picking a library — TL;DR
+### Picking a library — TL;DR
 
 - Integer / PIR / encrypted SQL → **OpenFHE BFV**
 - Quantised ML inference → **Concrete ML** (TFHE)
-- Real-valued CKKS (LR, neural net, SHAP) → **TenSEAL**
+- Real-valued CKKS (LR, neural net, SHAP) → **OpenFHE CKKS**
 
 ### A note on "same test for all"
 
@@ -31,23 +30,27 @@ dominates any library-level precision signal. Conversely, running CKKS on a
 modular-integer circuit wastes its real-valued precision.
 
 **Our compromise:** CKKS libraries are benchmarked on the **identical CKKS
-circuit** (`(w·x + b)²` on real inputs, depth 2) — their comparison is
-directly apples-to-apples. Integer-scheme libraries are benchmarked on the
-**identical integer circuit** (`(w·x_int + b)² mod p` at depth 2) — also
-apples-to-apples within their family. The two tables below report each.
+circuit** (`(w·x + b)²` on real inputs, depth 2). Integer-scheme libraries
+are benchmarked on the **identical integer circuit**
+(`(w·x_int + b)² mod p` at depth 2). Comparison within each family is
+apples-to-apples; the two tables below report each.
 
 ### Leaderboard — Integer / quantised schemes
 
 Circuit: `(w_int·x_int + b_int)² mod p = 65537` on quantised-int16 `[-3, 3]^8`.
 Every library in this table runs **the same integer circuit**.
 
-| Rank  | Library              | Scheme | Fail rate    | Median max-err | Wall      |
-|-------|----------------------|--------|--------------|----------------|-----------|
-| 🥇 1  | **OpenFHE BFV 1.5+** | BFV    | **0 %** (0/5) | **0**         | **12.7 s**|
-| 🥈 2  | **OpenFHE BGV 1.5+** | BGV    | **0 %** (0/5) | **0**         | 15.6 s    |
-| 🥉 3  | **Concrete ML 1.9.0**| TFHE   | 33 % (1/3)    | 0             | 0.6 s     |
+| Rank | Library              | Scheme | Fail rate    | Median max-err | Wall      |
+|------|----------------------|--------|--------------|----------------|-----------|
+| 1    | **OpenFHE BFV 1.5+** | BFV    | **0 %** (0/5) | **0**         | **12.7 s** |
+| 2    | **OpenFHE BGV 1.5+** | BGV    | **0 %** (0/5) | **0**         | 15.6 s    |
+| 3    | **Concrete ML 1.9.0**| TFHE   | 33 % (1/3)    | 0             | 0.6 s     |
 
-BFV and BGV are bit-exact — zero divergence on every seed. Concrete ML's 33% FAIL is a quantisation-boundary crossing effect, not an algorithmic error. TFHE wins on wall-clock by 20× (0.6 s vs 12.7 s) — the tradeoff: TFHE operates on small integers with fixed bit-widths, BGV/BFV handle larger integer ranges.
+BFV and BGV are bit-exact — zero divergence on every seed. Concrete ML's
+33 % FAIL is a quantisation-boundary crossing effect, not an algorithmic
+error. TFHE wins on wall-clock by 20× (0.6 s vs 12.7 s); the tradeoff is
+that TFHE operates on small integers with fixed bit-widths while BGV/BFV
+handle larger integer ranges.
 
 ### Leaderboard — CKKS (real-valued)
 
@@ -55,11 +58,11 @@ Circuit: `(w·x + b)²` on real-valued `[-3, 3]^8`, depth 2. Every library in
 this table runs **the exact same circuit**. `AutoOracle(B=500)`, 5 seeds,
 threshold = 1e-2.
 
-| Rank  | Library                                          | Scheme | Fail rate       | Median max-err | Wall     |
-|-------|--------------------------------------------------|--------|-----------------|----------------|----------|
-| 🥇 1  | **OpenFHE 1.5+**                                 | CKKS   | **0 % (0/5)** ✅ | **1.57e-08**   | 21.2 s   |
-| 🥈 2  | **Pyfhel 3.5.0**                                 | CKKS   | 100 % (5/5)     | 1.30e-03       | 43.9 s   |
-| 🥉 3  | **TenSEAL 0.3.16** (Microsoft SEAL CKKS wrapper) | CKKS   | 100 % (5/5)     | 2.20e-03       | **17.7 s** |
+| Rank | Library                                          | Scheme | Fail rate     | Median max-err | Wall       |
+|------|--------------------------------------------------|--------|---------------|----------------|------------|
+| 1    | **OpenFHE 1.5+**                                 | CKKS   | **0 % (0/5)** | **1.57e-08**   | 21.2 s     |
+| 2    | **Pyfhel 3.5.0**                                 | CKKS   | 100 % (5/5)   | 1.30e-03       | 43.9 s     |
+| 3    | **TenSEAL 0.3.16** (Microsoft SEAL CKKS wrapper) | CKKS   | 100 % (5/5)   | 2.20e-03       | **17.7 s** |
 
 **OpenFHE is the only CKKS library that passes.** AutoOracle's 500-eval
 adversarial search couldn't push OpenFHE's max-err above 2.7e-08 across any
@@ -76,9 +79,11 @@ adversarial oracle is what exposes the difference on worst-case inputs.
 
 **Trade-off for CKKS users:**
 
-- **Need precision** → OpenFHE (100× less error than TenSEAL/Pyfhel).
-- **Need speed** → TenSEAL (1.2× faster wall-clock than OpenFHE, 2.5× faster than Pyfhel). You accept ~140,000× worse precision in return.
-- **Avoid for multi-level circuits** → Pyfhel. Slowest + requires manual level management for depth > 2.
+- **Need precision** → OpenFHE (~10⁵× less error than TenSEAL/Pyfhel).
+- **Need speed** → TenSEAL (1.2× faster wall-clock than OpenFHE,
+  2.5× faster than Pyfhel). Accepts ~10⁵× worse precision in return.
+- **Avoid for multi-level circuits** → Pyfhel. Slowest + requires manual
+  level management for depth > 2.
 
 ### Pyfhel caveat
 
@@ -99,9 +104,19 @@ in `research/future-work/` as future work.
 
 ### Three things to read
 
-1. **OpenFHE is the only CKKS library that passes.** On the identical depth-2 `(w·x+b)²` circuit, AutoOracle's 500-evaluation adversarial search cannot drive OpenFHE above max-err 2.7e-08 across 5 seeds — it passes the 1e-2 threshold on every seed. TenSEAL and Pyfhel both FAIL with max-err ~1–2e-3. That's a **~140,000× gap** between OpenFHE and TenSEAL on the same math.
-2. **Exact schemes (BGV, BFV, TFHE) are bit-exact by design** — their rows reward library correctness. BFV/BGV at 0% FAIL means OpenFHE's implementation is correct. Concrete ML's 33% reflects a TFHE quantisation-boundary effect, not implementation error.
-3. **FHE Oracle is scheme-agnostic.** Same `AutoOracle(...)` drives every row above. Add a library by writing one adapter; leaderboard updates on re-run. PRs welcome.
+1. **OpenFHE is the only CKKS library that passes.** On the identical
+   depth-2 `(w·x+b)²` circuit, AutoOracle's 500-evaluation adversarial
+   search cannot drive OpenFHE above max-err 2.7e-08 across 5 seeds — it
+   passes the 1e-2 threshold on every seed. TenSEAL and Pyfhel both FAIL
+   with max-err ~1–2e-3. That's a **~140,000× gap** between OpenFHE and
+   TenSEAL on the same math.
+2. **Exact schemes (BGV, BFV, TFHE) are bit-exact by design** — their rows
+   reward library correctness. BFV/BGV at 0 % FAIL means OpenFHE's
+   implementation is correct. Concrete ML's 33 % reflects a TFHE
+   quantisation-boundary effect, not implementation error.
+3. **FHE Oracle is scheme-agnostic.** Same `AutoOracle(...)` drives every
+   row above. Add a library by writing one adapter; leaderboard updates on
+   re-run. PRs welcome.
 
 ### Reproduce
 
@@ -116,10 +131,20 @@ docker run --rm --platform linux/amd64 fhe-oracle-bench \
     python benchmarks/library_comparison.py --circuit unified-squared-dot
 ```
 
+CSV outputs land in [benchmarks/results/](./benchmarks/results/).
+
 ## Install
 
 ```bash
 pip install fhe-oracle
+```
+
+Optional adapters:
+
+```bash
+pip install "fhe-oracle[tenseal]"     # CKKS via TenSEAL
+pip install "fhe-oracle[openfhe]"     # CKKS / BGV / BFV via OpenFHE (Linux)
+pip install "fhe-oracle[concrete]"    # TFHE via Concrete ML
 ```
 
 ## 30-second example
@@ -178,10 +203,10 @@ fitness function) spends its budget climbing toward the failure
 region instead, and finds bugs orders of magnitude larger than random
 sampling in the same wall-clock budget.
 
-On the patent-reference benchmark in this repo (a CKKS logistic
-regression circuit with a polynomial sigmoid approximation defect),
-the oracle finds divergence **4,259× larger** than random sampling
-at an equal 500-evaluation budget. Reproduce with:
+On the reference logistic-regression benchmark in this repo (a CKKS
+circuit with a polynomial sigmoid approximation defect), the oracle
+finds divergence **4,259× larger** than random sampling at an equal
+500-evaluation budget. Reproduce with:
 
 ```bash
 pip install cma numpy
@@ -193,7 +218,7 @@ python benchmarks/patent_logistic_regression.py --seed 42
 - **CMA-ES search** over the input domain, guided by a noise-aware
   fitness that combines plaintext/FHE divergence with ciphertext
   noise-budget consumption and multiplicative-depth utilisation.
-- **Adapters** for OpenFHE, Concrete ML, and SEAL turn on
+- **Adapters** for OpenFHE, Concrete ML, and TenSEAL turn on
   noise-guided search. A pure divergence fallback works without any
   native FHE library — useful for CI.
 - **Output**: PASS/FAIL verdict, worst input, sensitivity map, and a
@@ -201,23 +226,21 @@ python benchmarks/patent_logistic_regression.py --seed 42
 
 ## Benchmarks
 
-See [benchmarks/](./benchmarks/README.md) for reproducible circuits:
-
+See [benchmarks/](./benchmarks/README.md) for reproducible circuits.
 Numbers below are from live runs on this repo (500-evaluation budget,
 deterministic seed 42):
 
-| Circuit | Dim | Random max error | Oracle max error | Ratio |
-|---------|-----|------------------|------------------|-------|
-| Logistic regression (patent reference) | 5 | 3.5e-4 | 1.50 | **4,259×** |
-| Logistic regression (input-amplified mock) | 8 | 2.7e-1 | 6.8e-1 | 2.5× |
-| Polynomial (depth 4) | 6 | 1.7e-2 | 1.9e-2 | 1.1× |
-| Dense + Chebyshev sigmoid | 10 | — | 1.0e-1 | — |
+| Circuit                                     | Dim | Random max error | Oracle max error | Ratio       |
+|---------------------------------------------|-----|------------------|------------------|-------------|
+| Logistic regression (reference)             | 5   | 3.5e-4           | 1.50             | **4,259×**  |
+| Logistic regression (input-amplified mock)  | 8   | 2.7e-1           | 6.8e-1           | 2.5×        |
+| Polynomial (depth 4)                        | 6   | 1.7e-2           | 1.9e-2           | 1.1×        |
+| Dense + Chebyshev sigmoid                   | 10  | —                | 1.0e-1           | —           |
 
-Each benchmark runs in under one second on a 2020-era laptop.
-
-The `concrete-ml` path in `logistic_regression.py` is a stub wrapper;
-replace it with a compiled `predict_proba(x, fhe="execute")` call to
-exercise a real FHE backend.
+Pure-Python divergence-only benchmarks run in under one second on a
+2020-era laptop. Library-comparison benchmarks (TenSEAL / OpenFHE /
+Pyfhel) take 15–45 s/seed; reach the unified-circuit numbers via
+`benchmarks/library_comparison.py`.
 
 ## CI/CD integration
 
@@ -263,6 +286,35 @@ jobs:
 ```
 
 Full template: [examples/github_action.yml](./examples/github_action.yml).
+
+## Open-core split
+
+This repo ships **two packages**:
+
+- **`fhe-oracle`** — Core (AGPL-3.0). Public on PyPI. CMA-ES search,
+  AutoOracle landscape probe, adapters, divergence fitness, hybrid
+  random + CMA, coverage certificate. Caps `n_trials ≤ 1000`.
+- **`fhe-oracle-pro`** — Pro. Commercial-only, registers via Python
+  entry points (`fhe_oracle.heuristics`, `fhe_oracle.fitness`). When
+  installed alongside Core, the public `AutoOracle(...)` API
+  transparently uses Pro's noise-budget-aware fitness and named
+  heuristic seed generators (Multiplication Magnifier, Depth Seeker,
+  Near-Threshold Explorer). No code changes needed for migration.
+
+See [fhe-oracle-pro/README.md](./fhe-oracle-pro/README.md) and
+[COMMERCIAL.md](./COMMERCIAL.md) for the licence boundary.
+
+## Features (v0.5)
+
+- **Open-core split** — Pro extracted into `fhe-oracle-pro` package
+  with Python entry-point registration. Core remains AGPL; Pro is
+  commercial.
+- **Cross-library benchmark harness** — `benchmarks/library_comparison.py`
+  drives the same `(w·x+b)²` circuit through every installed adapter
+  and emits a single CSV per family (CKKS / integer).
+- **`sigma0=None` auto-scale** + **`DISTANT_DEFECT` regime** in
+  `AutoOracle` — handles landscapes where the failure region sits
+  outside the initial search ball.
 
 ## Features (v0.4)
 
@@ -337,13 +389,6 @@ Full template: [examples/github_action.yml](./examples/github_action.yml).
 - **TenSEAL adapter** — `pip install fhe-oracle[tenseal]`
   enables noise-guided search on CKKS.
 
-## Patent notice
-
-A patent application covering this method has been filed
-(**PCT/IB2026/053378**, "System and Method for Adversarial
-Noise-Guided Differential Testing of Fully Homomorphic Encryption
-Programs"). The open-source code here is licensed under **AGPL-3.0**.
-
 ## Licensing
 
 Dual-licensed:
@@ -360,8 +405,6 @@ under AGPL-3.0, you need a commercial licence. Contact
 
 ## Related work
 
-- **PCT/IB2026/053378** — FHE Differential Testing Oracle (this
-  project's patent application)
 - **[CipherExplain](https://vaultbytes.com/cipherexplain)** — full
   encrypted SHAP suite, homomorphic SHAP, DP privacy, EU AI Act
   compliance tooling

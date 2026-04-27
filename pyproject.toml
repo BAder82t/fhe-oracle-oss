@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "AGPL-3.0-or-later" }
 authors = [
-    { name = "Bader Issaei", email = "b@vaultbytes.com" },
+    { name = "Bader Alissaei", email = "b@vaultbytes.com" },
 ]
 keywords = ["fhe", "homomorphic-encryption", "ckks", "testing", "cma-es", "adversarial"]
 classifiers = [

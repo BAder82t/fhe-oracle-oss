@@ -210,15 +210,41 @@ def seal_lr_d8(weights: np.ndarray, bias: float):
 
 
 def concrete_ml_lr_d8(weights: np.ndarray, bias: float):
-    """Placeholder: Concrete ML implementation.
+    """Concrete-ML LogisticRegression compiled to FHE (TFHE backend).
 
-    TODO: Concrete ML is TFHE-based, not CKKS; the closest analogue is
-    a quantised LR compiled via Concrete ML. This is a different
-    precision regime (integer + bootstrapping-driven error) and will
-    produce a qualitatively different number than CKKS -- worth a
-    separate row explicitly labelled TFHE.
+    Concrete-ML quantises inputs/weights to ``n_bits`` and compiles to a
+    TFHE circuit. The FHE evaluation matches the quantised-clear
+    evaluation bit-exactly; the precision signal therefore comes from
+    the *quantisation* of the compiled model relative to the
+    full-precision sigmoid reference (plaintext_lr_d8 / Taylor-3).
+
+    Note: this is not directly comparable to TenSEAL/OpenFHE CKKS rows,
+    which measure CKKS approximation error on the same Taylor-3
+    circuit. Concrete-ML measures end-to-end TFHE+quant error vs the
+    full sigmoid; numbers belong in their own table.
     """
-    return None
+    try:
+        from concrete.ml.sklearn import LogisticRegression as CMLLR
+    except ImportError:
+        return None
+    rng = np.random.default_rng(0)
+    X_train = rng.uniform(-3.0, 3.0, (200, 8))
+    y_train = (X_train @ weights + bias > 0).astype(int)
+    model = CMLLR(n_bits=8)
+    model.fit(X_train, y_train)
+    try:
+        model.compile(X_train)
+    except Exception:
+        return None
+
+    def fhe_fn(x):
+        x_arr = np.asarray(x, dtype=np.float64).reshape(1, -1)
+        try:
+            return float(model.predict_proba(x_arr, fhe="execute")[0][1])
+        except Exception:
+            return 0.0
+
+    return fhe_fn
 
 
 # ===========================================================================

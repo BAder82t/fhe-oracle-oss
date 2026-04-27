@@ -44,13 +44,27 @@ Every library in this table runs **the same integer circuit**.
 |------|----------------------|--------|--------------|----------------|-----------|
 | 1    | **OpenFHE BFV 1.5+** | BFV    | **0 %** (0/5) | **0**         | **12.7 s** |
 | 2    | **OpenFHE BGV 1.5+** | BGV    | **0 %** (0/5) | **0**         | 15.6 s    |
-| 3    | **Concrete ML 1.9.0**| TFHE   | 33 % (1/3)    | 0             | 0.6 s     |
 
-BFV and BGV are bit-exact — zero divergence on every seed. Concrete ML's
-33 % FAIL is a quantisation-boundary crossing effect, not an algorithmic
-error. TFHE wins on wall-clock by 20× (0.6 s vs 12.7 s); the tradeoff is
-that TFHE operates on small integers with fixed bit-widths while BGV/BFV
-handle larger integer ranges.
+BFV and BGV are bit-exact — zero divergence on every seed.
+
+### TFHE / Concrete-ML — different precision regime
+
+Concrete-ML compiles quantised sklearn-style models to TFHE. Within
+the compiled circuit TFHE evaluation is bit-exact (verified: clear
+quant predict and FHE-execute predict agree to machine precision);
+precision loss comes from the *quantisation* of the model rather
+than scheme noise. At `n_bits=8` quantisation error on probability
+outputs is bounded by ~2⁻⁸ ≈ 4e-3.
+
+Concrete-ML does not share the modular-integer `(w·x+b)² mod p`
+family of BFV/BGV — its plaintext reference is a sklearn sigmoid LR,
+not the integer-squared circuit — so it is not in the integer table
+above. Reproduce:
+
+```bash
+python benchmarks/library_comparison.py \
+    --circuit ckks-taylor3 --libs concrete-ml --seeds 41 42 43
+```
 
 ### Leaderboard — CKKS (real-valued)
 

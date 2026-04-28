@@ -172,27 +172,13 @@ def test_heuristic_seed_injection_requires_bounds_to_have_effect():
     assert result.verdict in ("PASS", "FAIL")
 
 
-def test_pure_divergence_defaults_v030():
-    """v0.3.0 defaults: shaping weights are zero (pure divergence)."""
+def test_pure_divergence_defaults():
+    """Core uses pure divergence; w_noise and w_depth shaping weights
+    were removed in v0.5.1 after Item 17 falsified the proxies."""
     oracle = FHEOracle(
         plaintext_fn=_square, fhe_fn=_square, input_dim=2,
         input_bounds=[(-1.0, 1.0)] * 2,
     )
     assert oracle.w_div == 1.0
-    assert oracle.w_noise == 0.0
-    assert oracle.w_depth == 0.0
-
-
-def test_shaping_weights_override_still_accepted():
-    """Users can restore v0.2 shaping by passing weights explicitly."""
-    oracle = FHEOracle(
-        plaintext_fn=_square, fhe_fn=_square, input_dim=2,
-        input_bounds=[(-1.0, 1.0)] * 2,
-        w_noise=0.5, w_depth=0.3,
-    )
-    assert oracle.w_noise == 0.5
-    assert oracle.w_depth == 0.3
-
-
-# test_noise_guided_fitness_default_weights_v030: moved to
-# pro_modules/tests/ (tests NoiseBudgetFitness, a Pro-only class).
+    assert not hasattr(oracle, "w_noise")
+    assert not hasattr(oracle, "w_depth")

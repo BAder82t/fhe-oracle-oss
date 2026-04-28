@@ -132,17 +132,14 @@ class FHEOracle:
         Random seed for reproducibility.
     w_div : float, default 1.0
         Weight for pure divergence in the noise-guided fitness
-        (applied only when ``adapter`` is supplied).
-    w_noise : float, default 0.0
-        Weight for noise-budget consumption in fitness. Default
-        changed from ``0.5`` to ``0.0`` in v0.3.0: empirical evaluation
-        (paper §6.15) showed shaping weights are inert on all tested
-        CKKS circuits and counter-productive on pure-CKKS-noise
-        circuits. Set to ``0.5`` to restore v0.2 behaviour.
-    w_depth : float, default 0.0
-        Weight for multiplicative-depth utilisation in fitness. Default
-        changed from ``0.3`` to ``0.0`` in v0.3.0 for the same reason as
-        ``w_noise``. Set to ``0.3`` to restore v0.2 behaviour.
+        (applied only when ``adapter`` is supplied). The historical
+        ``w_noise`` and ``w_depth`` shaping weights were removed in
+        v0.5.1: paper §6.15 showed they are inert on tested CKKS
+        circuits, and the Item 17 Lattigo correlation experiment
+        (2026-04-28) found the level-proportional depth proxy
+        empirically uncorrelated with decrypt-based precision at
+        d ≥ 4 (Spearman ρ = 0.07). See
+        ``research/future-work/17-results.md``.
     """
 
     def __init__(
@@ -170,8 +167,6 @@ class FHEOracle:
         stall_tol: float = 1e-8,
         separable: bool = False,
         w_div: float = 1.0,
-        w_noise: float = 0.0,
-        w_depth: float = 0.0,
         adaptive: bool = False,
         adaptive_config: Optional[AdaptiveConfig] = None,
         diversity_injection: bool = False,
@@ -229,8 +224,6 @@ class FHEOracle:
         self._stall_tol = float(stall_tol)
         self._separable = bool(separable)
         self.w_div = float(w_div)
-        self.w_noise = float(w_noise)
-        self.w_depth = float(w_depth)
         self._scheme = (
             adapter.get_scheme_name() if adapter is not None else "plaintext-diff"
         )
@@ -257,21 +250,20 @@ class FHEOracle:
                 rank_weight=float(rank_weight),
             )
         elif adapter is not None:
+            # Adapter is provided but no noise-budget fitness is
+            # registered: fall back to pure divergence using the
+            # adapter's evaluate_with_state path. Item 17 showed the
+            # historical noise-shaping fitness was based on a proxy
+            # uncorrelated with decrypt-based precision at d >= 4.
             try:
                 noise_cls = registry.get_fitness("noise_budget")
+                self._fitness = noise_cls(
+                    plaintext_fn, adapter, weights=(self.w_div,)
+                )
             except KeyError:
-                raise RuntimeError(
-                    "Noise-guided fitness requires fhe-oracle-pro "
-                    "(patent PCT/IB2026/053378). Install from the "
-                    "commercial index, or omit the adapter argument "
-                    "to use pure-divergence fitness in the open-source "
-                    "edition."
-                ) from None
-            self._fitness = noise_cls(
-                plaintext_fn,
-                adapter,
-                weights=(self.w_div, self.w_noise, self.w_depth),
-            )
+                self._fitness = DivergenceFitness(
+                    plaintext_fn, lambda x: adapter.evaluate(x)
+                )
         else:
             self._fitness = DivergenceFitness(plaintext_fn, fhe_fn)
 

@@ -70,15 +70,23 @@ class ComponentLog:
 class InstrumentedFitness:
     """Fitness wrapper that logs each component value per evaluation.
 
-    Mirrors the S0 ``CfgFitness`` aggregation:
+    Aggregation:
 
         divergence = max |plaintext - fhe| over matched outputs
         noise_term = min(1.0, ||x||     / (sqrt(d) * 3))
         depth_term = min(1.0, max|x_i|  / 3)
         fitness    = w_div * div + w_noise * noise + w_depth * depth
 
+    Default weights are ``w_div=1.0``, ``w_noise=0.0``, ``w_depth=0.0``
+    — the noise and depth proxies were found empirically uncorrelated
+    with decrypt-based CKKS precision at d >= 4 in the Item 17 Lattigo
+    correlation experiment (Spearman rho = 0.07). The shaping terms
+    are retained as opt-in for legacy reproduction and per-component
+    inspection but should not be used as a default fitness shape.
+    See ``research/future-work/17-results.md``.
+
     When plaintext_fn / fhe_fn raise, divergence is recorded as 0.0
-    and noise/depth are still computed from ``x`` (matches S0 fallback).
+    and noise/depth are still computed from ``x``.
     """
 
     def __init__(
@@ -87,8 +95,8 @@ class InstrumentedFitness:
         fhe_fn: Callable,
         dim: int,
         w_div: float = 1.0,
-        w_noise: float = 0.5,
-        w_depth: float = 0.3,
+        w_noise: float = 0.0,
+        w_depth: float = 0.0,
         log: Optional[ComponentLog] = None,
     ) -> None:
         if dim <= 0:

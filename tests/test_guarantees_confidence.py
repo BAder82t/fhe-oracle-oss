@@ -1,4 +1,4 @@
-# Copyright (C) 2026 Bader Issaei / VaultBytes Innovations Ltd
+# Copyright (C) 2026 Bader Alissaei / VaultBytes Innovations Ltd
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """Tests for pass_confidence / confidence_adjusted_pass (Limitation 6, Direction 1)."""
 

@@ -1,6 +1,5 @@
-# Copyright (C) 2026 Bader Issaei / VaultBytes Innovations Ltd
+# Copyright (C) 2026 Bader Alissaei / VaultBytes Innovations Ltd
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Patent pending: PCT/IB2026/053378
 """Random subspace embedding for high-dimensional FHE oracle search.
 
 For circuits with ``d >> 100`` where preactivation factorisation is

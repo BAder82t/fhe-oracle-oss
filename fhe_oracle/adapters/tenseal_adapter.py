@@ -1,6 +1,5 @@
-# Copyright (C) 2026 Bader Issaei / VaultBytes Innovations Ltd
+# Copyright (C) 2026 Bader Alissaei / VaultBytes Innovations Ltd
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Patent pending: PCT/IB2026/053378
 """TenSEAL CKKS adapter for FHE Oracle (B1).
 
 Provides real CKKS encryption, homomorphic evaluation, and decryption

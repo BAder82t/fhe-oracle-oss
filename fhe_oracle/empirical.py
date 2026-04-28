@@ -1,6 +1,5 @@
-# Copyright (C) 2026 Bader Issaei / VaultBytes Innovations Ltd
+# Copyright (C) 2026 Bader Alissaei / VaultBytes Innovations Ltd
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Patent pending: PCT/IB2026/053378
 """Empirical-distribution search for FHE divergence testing (A3).
 
 Draws inputs by sampling (with replacement + Gaussian jitter) from a

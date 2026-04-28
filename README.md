@@ -1,7 +1,6 @@
 # FHE Oracle
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
-[![Commercial license available](https://img.shields.io/badge/commercial-available-brightgreen.svg)](./COMMERCIAL.md)
 
 Adversarial precision testing for Fully Homomorphic Encryption.
 Finds CKKS bugs that random testing misses.
@@ -160,28 +159,8 @@ jobs:
 
 Full template: [examples/github_action.yml](./examples/github_action.yml).
 
-## Open-core split
-
-This repo ships **two packages**:
-
-- **`fhe-oracle`** — Core (AGPL-3.0). Public on PyPI. CMA-ES search,
-  AutoOracle landscape probe, adapters, divergence fitness, hybrid
-  random + CMA, coverage certificate. Caps `n_trials ≤ 1000`.
-- **`fhe-oracle-pro`** — Pro. Commercial-only, registers via Python
-  entry points (`fhe_oracle.heuristics`, `fhe_oracle.fitness`). When
-  installed alongside Core, the public `AutoOracle(...)` API
-  transparently uses Pro's noise-budget-aware fitness and named
-  heuristic seed generators (Multiplication Magnifier, Depth Seeker,
-  Near-Threshold Explorer). No code changes needed for migration.
-
-See [fhe-oracle-pro/README.md](./fhe-oracle-pro/README.md) and
-[COMMERCIAL.md](./COMMERCIAL.md) for the licence boundary.
-
 ## Features (v0.5)
 
-- **Open-core split** — Pro extracted into `fhe-oracle-pro` package
-  with Python entry-point registration. Core remains AGPL; Pro is
-  commercial.
 - **Cross-library benchmark harness** — `benchmarks/library_comparison.py`
   drives the same `(w·x+b)²` circuit through every installed adapter
   and emits a single CSV per family (CKKS / integer).
@@ -264,24 +243,4 @@ See [fhe-oracle-pro/README.md](./fhe-oracle-pro/README.md) and
 
 ## Licensing
 
-Dual-licensed:
-
-- **AGPL-3.0-or-later** — free for research, personal use, and
-  AGPL-compatible open-source projects. See [LICENSE](./LICENSE).
-- **Commercial** — for closed-source products, SaaS, or any use
-  that cannot comply with AGPL's copyleft. See
-  [COMMERCIAL.md](./COMMERCIAL.md) for scope and contact.
-
-Quick rule of thumb: if you cannot release your product's source
-under AGPL-3.0, you need a commercial licence. Contact
-**b@vaultbytes.com**.
-
-## Related work
-
-- **[CipherExplain](https://vaultbytes.com/cipherexplain)** — full
-  encrypted SHAP suite, homomorphic SHAP, DP privacy, EU AI Act
-  compliance tooling
-
-## Contact
-
-b@vaultbytes.com
+AGPL-3.0-or-later. See [LICENSE](./LICENSE).

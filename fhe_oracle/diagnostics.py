@@ -1,4 +1,4 @@
-# Copyright (C) 2026 Bader Issaei / VaultBytes Innovations Ltd
+# Copyright (C) 2026 Bader Alissaei / VaultBytes Innovations Ltd
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """Per-evaluation fitness-component logger for change-point analysis.
 

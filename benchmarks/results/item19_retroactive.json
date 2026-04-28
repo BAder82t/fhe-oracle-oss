@@ -1,0 +1,59 @@
+{
+  "test_name": "\u00a74.1 retroactive application of Item 19 methodology",
+  "date": "2026-04-21",
+  "tests": [
+    {
+      "name": "WDBC d=30 oracle vs random",
+      "n": 20,
+      "wins": 20,
+      "ratio": 6.652556160974626,
+      "p_raw": 1.9073486328125e-06,
+      "p_fdr": 2.86102294921875e-06
+    },
+    {
+      "name": "WDBC d=30 hybrid vs random",
+      "n": 20,
+      "wins": 20,
+      "ratio": 16.878803126526073,
+      "p_raw": 1.9073486328125e-06,
+      "p_fdr": 2.86102294921875e-06
+    },
+    {
+      "name": "MNIST d=64 oracle vs random",
+      "n": 20,
+      "wins": 20,
+      "ratio": 3.223183364657491,
+      "p_raw": 1.9073486328125e-06,
+      "p_fdr": 2.86102294921875e-06
+    },
+    {
+      "name": "MNIST d=64 hybrid vs random",
+      "n": 20,
+      "wins": 20,
+      "ratio": 3.2769235216039347,
+      "p_raw": 1.9073486328125e-06,
+      "p_fdr": 2.86102294921875e-06
+    },
+    {
+      "name": "TenSEAL LR d=8 matched",
+      "n": 20,
+      "wins": 15,
+      "ratio": 2.119584429641274,
+      "p_raw": 0.0005855560302734375,
+      "p_fdr": 0.000702667236328125
+    },
+    {
+      "name": "Item 16: C3 WDBC B=80 Pro vs Core",
+      "n": 10,
+      "wins": 5,
+      "ratio": 1.2359240189636103,
+      "p_raw": 0.845703125,
+      "p_fdr": 0.845703125
+    }
+  ],
+  "summary": {
+    "passed": 5,
+    "failed_or_weak": 1,
+    "total": 6
+  }
+}

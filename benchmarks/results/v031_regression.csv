@@ -1,0 +1,7 @@
+circuit,d,k,n_projections,n_anchors,budget,mean_subspace,mean_random,ratio,wins,n_seeds,mean_wallclock_s,fallback_count,v030_ratio,fixed,regime,expected,match
+lr_mock_d200,200,50,3,2,500,8.165123412977644,7.7425267151693475,1.0545812385742674,3,5,0.9451204000040889,5,0.294,yes,,,
+lr_mock_d500,500,50,3,2,500,17.92925040933441,20.325537871241004,0.8821045978174509,1,5,0.8309592831414193,5,0.128,no-change,,,
+directional_d500,500,50,5,2,500,4.17068703354238,4.131657427698867,1.0094464767533378,3,5,0.7052579666487873,5,0.133,yes,,,
+cnn_like_d200,200,50,5,2,500,0.01816357732818552,0.017273160018648516,1.0515491843169222,3,5,1.3973155666608363,2,1.117,no-change,,,
+cheb_simulated_probe,10,,,,,,,,,,,,,,plateau_then_cliff,plateau_then_cliff,True
+lr_like_simulated_probe,8,,,,,,,,,,,,,,standard,standard,True

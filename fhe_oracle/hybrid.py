@@ -1,6 +1,5 @@
-# Copyright (C) 2026 Bader Issaei / VaultBytes Innovations Ltd
+# Copyright (C) 2026 Bader Alissaei / VaultBytes Innovations Ltd
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Patent pending: PCT/IB2026/053378
 """Hybrid oracle + empirical search with union verdict (A3).
 
 `run_hybrid` runs `FHEOracle.run()` (CMA-ES adversarial search over the

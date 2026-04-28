@@ -1,10 +1,72 @@
+# Byte-compiled / optimised / DLL files
 __pycache__/
-*.egg-info/
-dist/
+*.py[cod]
+*$py.class
+*.so
+
+# Distribution / packaging
+.Python
 build/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+*.egg
+MANIFEST
+pip-wheel-metadata/
+
+# Virtual envs
 .venv/
+venv/
+env/
+ENV/
+
+# Tests / coverage
 .pytest_cache/
 .coverage
-.DS_Store
-.artifacts/
+.coverage.*
+htmlcov/
+.cache
+.tox/
+.nox/
+
+# IDE / agent state
+.idea/
+.vscode/
 .claude/
+*.swp
+
+# Editor backup files
+*~
+.DS_Store
+
+# Oracle artefacts
+oracle_report.json
+oracle_report.md
+*.log
+
+# LaTeX build artefacts
+*.aux
+*.out
+*.toc
+*.bbl
+*.blg
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.nav
+*.snm
+*.vrb
+
+# Research drafts (local-only, not published)
+research/
+
+# Concrete-ML debug artefacts
+.artifacts/

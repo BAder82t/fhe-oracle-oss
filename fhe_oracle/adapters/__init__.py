@@ -1,6 +1,5 @@
-# Copyright (C) 2026 Bader Issaei / VaultBytes Innovations Ltd
+# Copyright (C) 2026 Bader Alissaei / VaultBytes Innovations Ltd
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Patent pending: PCT/IB2026/053378
 """FHE library adapters for noise-guided oracle search.
 
 Each adapter wraps a specific FHE backend (OpenFHE, Concrete, SEAL)

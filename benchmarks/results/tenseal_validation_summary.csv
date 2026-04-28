@@ -1,0 +1,7 @@
+experiment,n_seeds,median_ratio_oracle_over_random,mean_ratio_oracle_over_random,wins_oracle_over_random,p_uncorrected_oracle_greater,median_ratio_oracle_over_empirical,mean_ratio_oracle_over_empirical,wins_oracle_over_empirical,p_uncorrected_empirical_greater,paper_note
+cheb_matched,10,0.3075336355273083,0.5724477000066889,1,0.9755859375,,,,,Table 4 row 3
+cheb_warm,10,1.9322734083455912,2.004803277020153,8,0.052734375,,,,,new (A1 mitigation)
+lr_matched,10,1.9369417990781055,2.237729773392284,7,0.013671875,,,,,Table 4 row 1
+wdbc_asymmetric,10,,,,,0.23307154740028732,0.33250448835343777,0,0.0009765625,median 0.25 / wins 1/10 (Table 5 asymmetric)
+wdbc_hybrid,10,,,,,0.21954611226211426,0.2543523937201306,0,0.0009765625,new (A3 union verdict)
+wdbc_matched,10,0.8698196397028659,1.2523874196968892,3,0.5771484375,,,,,Table 5 matched

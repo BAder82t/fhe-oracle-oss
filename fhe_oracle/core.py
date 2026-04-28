@@ -1,6 +1,5 @@
-# Copyright (C) 2026 Bader Issaei / VaultBytes Innovations Ltd
+# Copyright (C) 2026 Bader Alissaei / VaultBytes Innovations Ltd
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Patent pending: PCT/IB2026/053378
 """FHEOracle: CMA-ES adversarial search for FHE precision bugs.
 
 Finds inputs that maximise the divergence between a plaintext function
@@ -50,11 +49,6 @@ def _build_seeds(rng, bounds, k, which, tau):
         return fallback_corner_seeds(rng, bounds, k=k)
     return gen(rng, bounds, k=k, tau=tau, which=which)
 
-# Soft cap on n_trials for the open-source edition. Lifted by
-# fhe-oracle-pro on import. Users who need the uncapped search in
-# OSS can override via the FHE_ORACLE_MAX_TRIALS environment variable
-# (e.g. export FHE_ORACLE_MAX_TRIALS=10000). Documented policy, not DRM.
-MAX_TRIALS_OSS: int = int(os.environ.get("FHE_ORACLE_MAX_TRIALS", "1000"))
 from .multi_output import MultiOutputFitness, MultiOutputMode
 
 
@@ -334,17 +328,6 @@ class FHEOracle:
         -------
         OracleResult
         """
-        # Soft cap enforcement (OSS edition). Pro lifts MAX_TRIALS_OSS
-        # to sys.maxsize on import; users who need more evaluations
-        # without Pro can set FHE_ORACLE_MAX_TRIALS=<n> in env.
-        if n_trials > MAX_TRIALS_OSS:
-            raise ValueError(
-                f"n_trials={n_trials} exceeds the open-source edition "
-                f"limit of {MAX_TRIALS_OSS}. Override for a single run "
-                f"with FHE_ORACLE_MAX_TRIALS=<n> in your environment, "
-                f"or install fhe-oracle-pro (https://vaultbytes.com/"
-                f"oracle.html) which removes the cap."
-            )
         try:
             import cma
         except ImportError as exc:

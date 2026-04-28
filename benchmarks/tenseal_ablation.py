@@ -1,4 +1,4 @@
-# Copyright (C) 2026 Bader Issaei / VaultBytes Innovations Ltd
+# Copyright (C) 2026 Bader Alissaei / VaultBytes Innovations Ltd
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Patent pending: PCT/IB2026/053378
 """S0 heuristic lesion audit on real CKKS LR (B1 validation of S0 caveat).

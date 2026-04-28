@@ -41,7 +41,6 @@ dev = ["pytest>=7.0", "pytest-cov", "build", "twine"]
 [project.urls]
 Homepage = "https://github.com/BAder82t/fhe-oracle"
 Issues = "https://github.com/BAder82t/fhe-oracle/issues"
-Commercial = "https://vaultbytes.com/oracle.html"
 
 [tool.setuptools.packages.find]
 include = ["fhe_oracle*"]

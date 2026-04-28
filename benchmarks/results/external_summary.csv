@@ -1,0 +1,9 @@
+config,circuit,median_err,mean_err,fail_rate,ratio_vs_oracle,ratio_vs_random,wins_vs_oracle,wins_vs_random,p_greater_than_oracle,p_greater_than_random
+oracle_only,mnist_d64,1659.2852807090126,1657.1724548160887,1.0,-,2.923,-,10/10,-,3.906e-03
+random_only,mnist_d64,587.026633040988,569.4503553501877,1.0,-,-,-,-,-,-
+empirical_only,mnist_d64,258.1490668222904,267.62365986025986,1.0,0.165,-,0/10,-,1.000e+00,-
+hybrid_union,mnist_d64,1835.2122535304252,1788.678757150175,1.0,-,-,-,-,-,-
+oracle_only,wdbc_lr,1274.1735294639232,1291.7293185578105,1.0,-,6.804,-,10/10,-,3.906e-03
+random_only,wdbc_lr,183.35818999125073,189.45927772883348,1.0,-,-,-,-,-,-
+empirical_only,wdbc_lr,3310.9169884315106,2885.347366709622,1.0,2.664,-,9/10,-,5.859e-03,-
+hybrid_union,wdbc_lr,3310.9169884315106,3029.58435591746,1.0,-,-,-,-,-,-

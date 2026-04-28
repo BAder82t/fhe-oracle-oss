@@ -70,3 +70,6 @@ research/
 
 # Concrete-ML debug artefacts
 .artifacts/
+
+# Lattigo Go probe compiled binary (build with `go build .`)
+benchmarks/lattigo_probe/lattigo_probe

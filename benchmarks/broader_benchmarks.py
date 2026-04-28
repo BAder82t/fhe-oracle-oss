@@ -1,6 +1,5 @@
-# Copyright (C) 2026 Bader Alissaei / VaultBytes Innovations Ltd
+# Copyright (C) 2026 Bader Alissaei
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Patent pending: PCT/IB2026/053378
 """Broader external benchmarks: Concrete-ML compiler-generated circuits.
 
 Addresses Limitation 2 of the v5 paper: all prior external benchmarks

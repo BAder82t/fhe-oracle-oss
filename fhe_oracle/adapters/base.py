@@ -1,4 +1,4 @@
-# Copyright (C) 2026 Bader Alissaei / VaultBytes Innovations Ltd
+# Copyright (C) 2026 Bader Alissaei
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """Abstract base class for FHE library adapters."""
 
@@ -28,3 +28,14 @@ class FHEAdapter(ABC):
 
     @abstractmethod
     def get_scheme_name(self) -> str: ...
+
+    def evaluate(self, x: list[float]) -> list[float]:
+        """Run the full encrypt -> compute -> decrypt path on ``x``.
+
+        Default implementation chains the abstract methods. Subclasses
+        may override for efficiency. Returns the decrypted output of
+        ``run_fhe_program`` evaluated on the encryption of ``x``.
+        """
+        ct = self.encrypt(x)
+        ct_out = self.run_fhe_program(ct)
+        return self.decrypt(ct_out)

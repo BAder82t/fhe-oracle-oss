@@ -1,6 +1,5 @@
-# Copyright (C) 2026 Bader Alissaei / VaultBytes Innovations Ltd
+# Copyright (C) 2026 Bader Alissaei
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Patent pending: PCT/IB2026/053378
 """MNIST logistic regression mock (B3) — Taylor-3 vs true sigmoid.
 
 Extends the WDBC mock pattern (paper §6.7) to a higher-dimensional

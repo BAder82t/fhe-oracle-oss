@@ -1,6 +1,5 @@
-# Copyright (C) 2026 Bader Alissaei / VaultBytes Innovations Ltd
+# Copyright (C) 2026 Bader Alissaei
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Patent pending: PCT/IB2026/053378
 """Empirical verification of the Chernoff coverage bound (A4).
 
 For each of the three mock circuits, at τ = median(max_error) from the

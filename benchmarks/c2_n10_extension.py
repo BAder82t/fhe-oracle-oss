@@ -1,4 +1,4 @@
-# Copyright (C) 2026 Bader Alissaei / VaultBytes Innovations Ltd
+# Copyright (C) 2026 Bader Alissaei
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """C2 n=10 extension — append seeds 5-9 to taylor_ckks_ablation.csv.
 

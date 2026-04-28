@@ -82,7 +82,7 @@ finds divergence **4,259× larger** than random sampling at an equal
 
 ```bash
 pip install cma numpy
-python benchmarks/patent_logistic_regression.py --seed 42
+python benchmarks/sigmoid_defect_benchmark.py --seed 42
 ```
 
 ## How it works

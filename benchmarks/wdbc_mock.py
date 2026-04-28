@@ -1,6 +1,5 @@
-# Copyright (C) 2026 Bader Alissaei / VaultBytes Innovations Ltd
+# Copyright (C) 2026 Bader Alissaei
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Patent pending: PCT/IB2026/053378
 """WDBC logistic regression mock — Taylor-3 vs true sigmoid (A3).
 
 Reconstructs §6.7 of the paper. Isolates the polynomial-approximation

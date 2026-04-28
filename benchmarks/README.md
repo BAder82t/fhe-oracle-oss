@@ -7,7 +7,7 @@ search) against random sampling in the same evaluation budget.
 
 ```bash
 pip install cma numpy
-python benchmarks/patent_logistic_regression.py   # headline 4,259x ratio
+python benchmarks/sigmoid_defect_benchmark.py   # headline 4,259x ratio
 python benchmarks/logistic_regression.py
 python benchmarks/polynomial_eval.py
 python benchmarks/neural_layer.py
@@ -19,7 +19,7 @@ Each benchmark completes in under 60 seconds on a 2020-era laptop.
 
 | File | Circuit | FHE backend |
 |------|---------|-------------|
-| `patent_logistic_regression.py` | w·x + b → polynomial sigmoid (defect) | simulated CKKS adapter |
+| `sigmoid_defect_benchmark.py` | w·x + b → polynomial sigmoid (defect) | simulated CKKS adapter |
 | `logistic_regression.py` | w·x + b → sigmoid | concrete-ml (if installed) or calibrated mock |
 | `polynomial_eval.py` | depth-4 polynomial over ℝ⁶ | calibrated mock |
 | `neural_layer.py` | dense layer + Chebyshev sigmoid | deterministic approximation |
@@ -38,7 +38,7 @@ and uses the real FHE path. Otherwise it falls back to the mock.
 
 ## Expected result
 
-On `patent_logistic_regression.py` (seed 42) the oracle finds
+On `sigmoid_defect_benchmark.py` (seed 42) the oracle finds
 **4,259× larger divergence** than random sampling — the headline
 figure from the patent evaluation. The smaller "mock CKKS" and
 polynomial circuits shown in the top-level README produce more

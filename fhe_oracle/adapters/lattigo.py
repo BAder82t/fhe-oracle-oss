@@ -30,19 +30,31 @@ from __future__ import annotations
 import csv
 import io
 import json
+import math
 import os
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, Sequence
+from typing import Iterator, Optional, Sequence
 
 
+# Default location only valid in a source checkout where benchmarks/
+# sits two levels above fhe_oracle/adapters/. PyPI installs exclude
+# benchmarks/ from the wheel, so users on a pip install must build
+# the Go binary separately and pass `binary=...` explicitly.
 _DEFAULT_BINARY = (
     Path(__file__).resolve().parents[2]
     / "benchmarks"
     / "lattigo_probe"
     / "lattigo_probe"
 )
+
+_ALLOWED_CIRCUITS = frozenset({"wxb_squared"})
+_ALLOWED_PARAMS = frozenset({"n14_logq200"})
+
+_MAX_INPUTS = 10_000
+_MAX_TIMEOUT_S = 600.0
+_MAX_STDERR_BYTES = 2048
 
 
 @dataclass(frozen=True)
@@ -70,9 +82,11 @@ class LattigoProbe:
     binary : str | Path | None
         Path to the compiled ``lattigo_probe`` Go binary. Defaults to
         the in-tree build at ``benchmarks/lattigo_probe/lattigo_probe``
-        (build with ``go build`` in that directory).
+        (build with ``go build`` in that directory). The default is
+        only valid in a source checkout — pip-installed users must
+        pass an explicit path.
     timeout_s : float
-        Subprocess timeout.
+        Subprocess timeout. Must be in (0, 600].
     """
 
     def __init__(
@@ -80,13 +94,20 @@ class LattigoProbe:
         binary: Optional[os.PathLike] = None,
         timeout_s: float = 120.0,
     ) -> None:
-        self.binary = Path(binary) if binary is not None else _DEFAULT_BINARY
-        if not self.binary.exists():
+        if binary is not None:
+            self.binary = Path(binary).resolve()
+        else:
+            self.binary = _DEFAULT_BINARY
+        if not self.binary.is_file():
             raise LattigoProbeError(
-                f"Lattigo probe binary not found at {self.binary}. "
+                f"Lattigo probe binary not found or not a file at {self.binary}. "
                 f"Build with: cd benchmarks/lattigo_probe && go build ."
             )
-        self.timeout_s = timeout_s
+        if not (0 < timeout_s <= _MAX_TIMEOUT_S):
+            raise ValueError(
+                f"timeout_s must be in (0, {_MAX_TIMEOUT_S}], got {timeout_s}"
+            )
+        self.timeout_s = float(timeout_s)
 
     def precision_per_input(
         self,
@@ -103,8 +124,8 @@ class LattigoProbe:
         inputs : sequence of input vectors
         w : weight vector (must match input dim)
         b : scalar bias
-        circuit : circuit identifier (currently only ``wxb_squared``)
-        params : Lattigo param set name
+        circuit : circuit identifier (must be in ``_ALLOWED_CIRCUITS``)
+        params : Lattigo param set name (must be in ``_ALLOWED_PARAMS``)
 
         Returns
         -------
@@ -112,6 +133,20 @@ class LattigoProbe:
         """
         if not inputs:
             return []
+        if len(inputs) > _MAX_INPUTS:
+            raise LattigoProbeError(
+                f"Input count {len(inputs)} exceeds maximum {_MAX_INPUTS}"
+            )
+        if circuit not in _ALLOWED_CIRCUITS:
+            raise LattigoProbeError(
+                f"Unknown circuit {circuit!r}. "
+                f"Allowed: {sorted(_ALLOWED_CIRCUITS)}"
+            )
+        if params not in _ALLOWED_PARAMS:
+            raise LattigoProbeError(
+                f"Unknown param set {params!r}. "
+                f"Allowed: {sorted(_ALLOWED_PARAMS)}"
+            )
 
         job = {
             "circuit": circuit,
@@ -136,16 +171,34 @@ class LattigoProbe:
             ) from exc
 
         if res.returncode != 0:
+            stderr_snippet = res.stderr[:_MAX_STDERR_BYTES].decode(
+                "utf-8", errors="replace"
+            )
+            if len(res.stderr) > _MAX_STDERR_BYTES:
+                stderr_snippet += "... (truncated)"
             raise LattigoProbeError(
-                f"Lattigo probe failed (exit {res.returncode}): "
-                f"{res.stderr.decode('utf-8', errors='replace')}"
+                f"Lattigo probe failed (exit {res.returncode}): {stderr_snippet}"
             )
 
-        return list(_parse_csv(res.stdout.decode("utf-8")))
+        try:
+            stdout_text = res.stdout.decode("utf-8", errors="replace")
+            return list(_parse_csv(stdout_text))
+        except (ValueError, IndexError) as exc:
+            raise LattigoProbeError(
+                f"Failed to parse Lattigo probe output: {exc}"
+            ) from exc
 
 
-def _parse_csv(blob: str) -> list[LattigoPrecisionRow]:
-    rows: list[LattigoPrecisionRow] = []
+def _checked_float(s: str, field: str) -> float:
+    v = float(s)
+    if not math.isfinite(v):
+        raise LattigoProbeError(
+            f"Non-finite value {v!r} in CSV field {field!r}"
+        )
+    return v
+
+
+def _parse_csv(blob: str) -> Iterator[LattigoPrecisionRow]:
     reader = csv.reader(io.StringIO(blob))
     for raw in reader:
         if not raw:
@@ -154,15 +207,12 @@ def _parse_csv(blob: str) -> list[LattigoPrecisionRow]:
             raise LattigoProbeError(
                 f"Unexpected probe CSV row (got {len(raw)} cols): {raw!r}"
             )
-        rows.append(
-            LattigoPrecisionRow(
-                idx=int(raw[0]),
-                mean_bits=float(raw[1]),
-                min_bits=float(raw[2]),
-                max_bits=float(raw[3]),
-                std_bits=float(raw[4]),
-                plaintext_value=float(raw[5]),
-                decrypted_real=float(raw[6]),
-            )
+        yield LattigoPrecisionRow(
+            idx=int(raw[0]),
+            mean_bits=_checked_float(raw[1], "mean_bits"),
+            min_bits=_checked_float(raw[2], "min_bits"),
+            max_bits=_checked_float(raw[3], "max_bits"),
+            std_bits=_checked_float(raw[4], "std_bits"),
+            plaintext_value=_checked_float(raw[5], "plaintext_value"),
+            decrypted_real=_checked_float(raw[6], "decrypted_real"),
         )
-    return rows

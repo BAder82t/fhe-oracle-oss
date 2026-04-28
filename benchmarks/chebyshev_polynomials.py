@@ -1,4 +1,4 @@
-# Copyright (C) 2026 Bader Alissaei / VaultBytes Innovations Ltd
+# Copyright (C) 2026 Bader Alissaei
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """Chebyshev-basis polynomial sigmoid approximations for C2.
 

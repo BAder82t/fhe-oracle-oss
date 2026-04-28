@@ -1,6 +1,5 @@
-# Copyright (C) 2026 Bader Alissaei / VaultBytes Innovations Ltd
+# Copyright (C) 2026 Bader Alissaei
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Patent pending: PCT/IB2026/053378
 """Extension of B2 high-dimensional scaling sweep to d in {256, 512}.
 
 Reuses the circuit builders, oracle runner, and random baseline from

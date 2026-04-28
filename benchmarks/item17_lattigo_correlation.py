@@ -143,9 +143,26 @@ def run_correlation(
     for name, vec in proxies.items():
         # We expect proxy and error to be positively correlated:
         # higher proxy => higher predicted noise => higher error.
+        if np.std(vec) == 0.0 or np.std(error) == 0.0:
+            print(
+                f"WARNING: {name} or error has zero variance; "
+                f"Spearman undefined, reporting NaN.",
+                file=sys.stderr,
+            )
+            rhos[name] = float("nan")
+            pvals[name] = float("nan")
+            continue
         result = spearmanr(vec, error)
-        rhos[name] = float(result.statistic)
-        pvals[name] = float(result.pvalue)
+        rho = float(result.statistic)
+        pv = float(result.pvalue)
+        if not np.isfinite(rho):
+            print(
+                f"WARNING: {name} Spearman rho is NaN despite non-zero "
+                f"variance; check for ties.",
+                file=sys.stderr,
+            )
+        rhos[name] = rho
+        pvals[name] = pv
 
     if out_csv is not None:
         out_csv.parent.mkdir(parents=True, exist_ok=True)

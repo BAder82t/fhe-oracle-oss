@@ -1,13 +1,11 @@
-# Copyright (C) 2026 Bader Alissaei / VaultBytes Innovations Ltd
+# Copyright (C) 2026 Bader Alissaei
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Patent pending: PCT/IB2026/053378
-"""Patent reference benchmark: random vs CMA-ES on a CKKS sigmoid defect.
+"""Reference benchmark: random vs CMA-ES on a CKKS sigmoid defect.
 
-Reproduces the headline max-error ratio reported in the patent prosecution
-package (PCT/IB2026/053378). A synthetic CKKS-like logistic regression
-circuit is built with a deliberate sigmoid polynomial-approximation defect;
-random sampling from the typical operational distribution misses the defect
-entirely, while CMA-ES over the adversarial search domain finds it.
+Reproduces the headline max-error ratio. A synthetic CKKS-like logistic
+regression circuit is built with a deliberate sigmoid polynomial-approximation
+defect; random sampling from the typical operational distribution misses
+the defect entirely, while CMA-ES over the adversarial search domain finds it.
 
 Circuit
 -------

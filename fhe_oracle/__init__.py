@@ -1,4 +1,4 @@
-# Copyright (C) 2026 Bader Alissaei / VaultBytes Innovations Ltd
+# Copyright (C) 2026 Bader Alissaei
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """FHE Oracle: adversarial precision testing for FHE programs.
 
@@ -72,4 +72,8 @@ __all__ = [
     "per_op_trace",
     "run_hybrid",
 ]
-__version__ = "0.5.1"
+try:
+    from importlib.metadata import PackageNotFoundError, version
+    __version__ = version("fhe-oracle")
+except (ImportError, PackageNotFoundError):
+    __version__ = "0.0.0+unknown"

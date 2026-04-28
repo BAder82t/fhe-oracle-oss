@@ -1,6 +1,5 @@
-# Copyright (C) 2026 Bader Alissaei / VaultBytes Innovations Ltd
+# Copyright (C) 2026 Bader Alissaei
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Patent pending: PCT/IB2026/053378
 """Hybrid random-floor + CMA-ES warm-start sweep (A1 + A4).
 
 Runs ρ ∈ {0.0, 0.1, 0.3, 0.5, 1.0} × 3 circuits × 10 seeds × B=500.

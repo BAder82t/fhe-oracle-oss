@@ -1,6 +1,5 @@
-# Copyright (C) 2026 Bader Alissaei / VaultBytes Innovations Ltd
+# Copyright (C) 2026 Bader Alissaei
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Patent pending: PCT/IB2026/053378
 """Broader external benchmarks — non-LR (MLP) circuits via Concrete-ML.
 
 Addresses Limitation 2 sub-claim (b): all current external circuits

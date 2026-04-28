@@ -1,6 +1,5 @@
-# Copyright (C) 2026 Bader Alissaei / VaultBytes Innovations Ltd
+# Copyright (C) 2026 Bader Alissaei
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Patent pending: PCT/IB2026/053378
 """Real-CKKS preactivation search at d=200 and d=784 (Proposal 1c).
 
 Builds a d-dim LR with Taylor-3 sigmoid under TenSEAL CKKS (N=16384,

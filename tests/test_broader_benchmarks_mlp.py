@@ -1,6 +1,5 @@
-# Copyright (C) 2026 Bader Alissaei / VaultBytes Innovations Ltd
+# Copyright (C) 2026 Bader Alissaei
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Patent pending: PCT/IB2026/053378
 """Tests for the Concrete-ML MLP broader-benchmarks adapter wiring.
 
 Skipped when concrete-ml is not installed (it requires Python <3.13 and

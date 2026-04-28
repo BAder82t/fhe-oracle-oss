@@ -1,22 +1,19 @@
-# Copyright (C) 2026 Bader Alissaei / VaultBytes Innovations Ltd
+# Copyright (C) 2026 Bader Alissaei
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """Fitness functions for adversarial FHE testing.
 
 Pure divergence fitness: ``|plain(x) - fhe(x)|``. Works without any
-FHE-library-specific instrumentation and is the default strategy for
-the open-source edition.
+FHE-library-specific instrumentation and is the default strategy.
 
-Noise-guided (noise-budget-aware) fitness is part of
-``fhe-oracle-pro`` and registers under the name ``"noise_budget"``
-in the :mod:`fhe_oracle.registry` ``fitness`` group. When Pro is
-installed, :class:`FHEOracle` auto-dispatches to it whenever an
-``adapter`` is supplied; otherwise Core raises a pointer to the
-commercial edition.
+External plugins can register a noise-budget-aware fitness under the
+name ``"noise_budget"`` in the :mod:`fhe_oracle.registry` ``fitness``
+group; when registered, :class:`FHEOracle` will auto-dispatch to it
+whenever an ``adapter`` is supplied.
 """
 
 from __future__ import annotations
 
-from typing import Callable, Optional
+from typing import Callable
 
 import numpy as np
 

@@ -1,4 +1,4 @@
-# Copyright (C) 2026 Bader Alissaei / VaultBytes Innovations Ltd
+# Copyright (C) 2026 Bader Alissaei
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """Auto-configuration probe for FHE Oracle.
 
@@ -138,7 +138,7 @@ _DISTANT_DEFECT_RATIO = 0.1
 
 
 def _distant_defect_probe(plaintext_fn: Callable, fhe_fn: Callable,
-                          bounds: list, rng: np.random.Generator,
+                          bounds: list[tuple[float, float]], rng: np.random.Generator,
                           n: int = _DISTANT_DEFECT_CENTER_PROBES) -> np.ndarray:
     """Sample n points in a Gaussian ball around box centre (radius
     matching default CMA-ES sigma0=1.0) and return per-sample
@@ -167,7 +167,7 @@ def _detect_distant_defect(centre_divs: np.ndarray,
     samples entirely inside the flat basin and receives no fitness
     gradient, so it collapses. Narrow-corridor CKKS defects (Taylor-3
     polynomial blow-up outside |z| <= 3) are the canonical case; see
-    patent specification Section 4.3.
+    ``research/future-work/14-autoconfig-v2-regime-routing.md``.
     """
     max_centre = float(centre_divs.max()) if centre_divs.size > 0 else 0.0
     max_full = float(full_divs.max()) if full_divs.size > 0 else 0.0
@@ -212,7 +212,7 @@ def _divergence(plaintext_fn: Callable, fhe_fn: Callable, x: np.ndarray) -> floa
 def classify_landscape(
     plaintext_fn: Callable,
     fhe_fn: Callable,
-    bounds: list,
+    bounds: list[tuple[float, float]],
     n_probes: int = 50,
     W: Optional[np.ndarray] = None,
     b: Optional[np.ndarray] = None,
@@ -352,15 +352,21 @@ def classify_landscape(
     if W is not None and b is not None:
         W_arr = np.atleast_2d(np.asarray(W, dtype=np.float64))
         b_arr = np.atleast_1d(np.asarray(b, dtype=np.float64)).astype(np.float64)
+        # Use probes.shape[0], not n_probes — `probes` may have been
+        # extended by the second-pass plateau-cliff branch above.
         preacts = np.array(
-            [float(np.max(np.abs(W_arr @ probes[i] + b_arr))) for i in range(n_probes)],
+            [float(np.max(np.abs(W_arr @ probes[i] + b_arr)))
+             for i in range(probes.shape[0])],
             dtype=np.float64,
+        )
+        assert preacts.size == divs.size, (
+            f"preacts/divs length mismatch: {preacts.size} vs {divs.size}"
         )
         # Guard against degenerate constant inputs that make Spearman NaN.
         if np.std(preacts) > 0.0 and np.std(divs) > 0.0:
-            corr, pval = spearmanr(divs, preacts)
-            corr = float(corr) if np.isfinite(corr) else 0.0
-            pval = float(pval) if np.isfinite(pval) else 1.0
+            _sr = spearmanr(divs, preacts)
+            corr = float(_sr.statistic) if np.isfinite(_sr.statistic) else 0.0
+            pval = float(_sr.pvalue) if np.isfinite(_sr.pvalue) else 1.0
             if corr > 0.7:
                 return ProbeResult(
                     regime=Regime.PREACTIVATION_DOMINATED,
@@ -448,7 +454,7 @@ class AutoOracle:
         self,
         plaintext_fn: Callable,
         fhe_fn: Callable,
-        bounds: list,
+        bounds: list[tuple[float, float]],
         W: Optional[np.ndarray] = None,
         b: Optional[np.ndarray] = None,
         n_probes: int = 50,

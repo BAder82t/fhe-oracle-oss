@@ -199,10 +199,18 @@ func runProbe(job Job) error {
 	return nil
 }
 
+// Maximum stdin payload size. 64 MB is sufficient for the documented
+// _MAX_INPUTS=10000 cap on the Python side at typical d <= 1024.
+const maxPayloadBytes = 64 * 1024 * 1024
+
 func main() {
-	body, err := io.ReadAll(os.Stdin)
+	body, err := io.ReadAll(io.LimitReader(os.Stdin, maxPayloadBytes))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "read stdin: %v\n", err)
+		os.Exit(1)
+	}
+	if len(body) >= maxPayloadBytes {
+		fmt.Fprintf(os.Stderr, "stdin payload exceeds %d bytes\n", maxPayloadBytes)
 		os.Exit(1)
 	}
 	var job Job

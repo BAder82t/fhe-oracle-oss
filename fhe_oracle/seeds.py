@@ -1,21 +1,17 @@
-# Copyright (C) 2026 Bader Alissaei / VaultBytes Innovations Ltd
+# Copyright (C) 2026 Bader Alissaei
 # SPDX-License-Identifier: AGPL-3.0-or-later
-"""Non-patented fallback seed generator for CMA-ES gen-0 injection.
+"""Fallback seed generator for CMA-ES gen-0 injection.
 
 Used by :class:`FHEOracle` when ``use_heuristic_seeds=True`` is set
-but the patented heuristic seed generators (Multiplication Magnifier,
-Depth Seeker, Near-Threshold Explorer -- PCT/IB2026/053378 Claim 5)
-are not registered in the plugin registry (i.e.\\ ``fhe-oracle-pro``
-is not installed).
+but no ``generate_seeds`` plugin is registered in the plugin registry.
 
 The fallback mixes ``k // 2`` axis-aligned corner candidates with
 ``k // 2`` uniform random samples. Corners are where polynomial
 approximations (Taylor, Chebyshev, minimax) diverge most; uniform
-randoms provide coverage inside the box. No claim-5 scoring is
-performed. This is intentionally weaker than the patented heuristics
-but gives Core a reasonable seeded initialisation on narrow-corridor
-circuits (e.g.\\ ckks_d5) where the CMA-ES default would otherwise
-basin-trap at the box midpoint.
+randoms provide coverage inside the box. Gives Core a reasonable
+seeded initialisation on narrow-corridor circuits (e.g.\\ ckks_d5)
+where the CMA-ES default would otherwise basin-trap at the box
+midpoint.
 """
 
 from __future__ import annotations

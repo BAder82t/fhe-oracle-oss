@@ -1,4 +1,4 @@
-# Copyright (C) 2026 Bader Alissaei / VaultBytes Innovations Ltd
+# Copyright (C) 2026 Bader Alissaei
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """FHEOracle: CMA-ES adversarial search for FHE precision bugs.
 
@@ -19,7 +19,6 @@ Public API
 
 from __future__ import annotations
 
-import os
 import time
 from dataclasses import dataclass, field
 from typing import Any, Callable, Optional
@@ -31,16 +30,22 @@ from .adaptive import AdaptiveBudget, AdaptiveConfig
 from .diversity import DiversityInjector, InjectionStrategy
 from .fitness import DivergenceFitness
 from .guarantees import CoverageCertificate
+from .multi_output import MultiOutputFitness, MultiOutputMode
 from .seeds import fallback_corner_seeds
 
 
-def _build_seeds(rng, bounds, k, which, tau):
-    """Generate heuristic seeds via Pro's patented generator if registered,
-    else the non-patented corner+random fallback.
+def _build_seeds(
+    rng: np.random.Generator,
+    bounds: Optional[list[tuple[float, float]]],
+    k: int,
+    which: tuple[str, ...],
+    tau: Optional[float],
+) -> list[list[float]]:
+    """Use the registered ``generate_seeds`` heuristic plugin if present,
+    otherwise fall back to corner+random sampling.
 
-    The Pro generator is registered under the ``"generate_seeds"`` name
-    in the ``heuristics`` registry by ``fhe-oracle-pro``'s ``__init__``.
-    It is a single callable with the signature
+    The plugin (registered via the ``fhe_oracle.heuristics`` entry-point
+    group under name ``generate_seeds``) is a callable with signature
     ``(rng, bounds, k, tau, which) -> list[list[float]]``.
     """
     try:
@@ -48,8 +53,6 @@ def _build_seeds(rng, bounds, k, which, tau):
     except KeyError:
         return fallback_corner_seeds(rng, bounds, k=k)
     return gen(rng, bounds, k=k, tau=tau, which=which)
-
-from .multi_output import MultiOutputFitness, MultiOutputMode
 
 
 @dataclass

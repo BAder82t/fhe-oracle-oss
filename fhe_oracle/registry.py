@@ -1,34 +1,38 @@
-# Copyright (C) 2026 Bader Alissaei / VaultBytes Innovations Ltd
+# Copyright (C) 2026 Bader Alissaei
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """Plugin registry for fitness functions and heuristic seed generators.
 
 Core ships with a minimal set of registrations (DivergenceFitness as
-the default fitness, and non-patented fallback corner/random seed
-generators). External packages -- notably ``fhe-oracle-pro`` -- can
-register additional fitness functions (e.g. NoiseBudgetFitness) and
-patented heuristic seed generators (Multiplication Magnifier, Depth
-Seeker, Near-Threshold Explorer) via Python entry points declared in
-their ``pyproject.toml``::
+the default fitness, and fallback corner/random seed generators).
+External packages can register additional fitness functions and
+heuristic seed generators via Python entry points declared in their
+``pyproject.toml``::
 
     [project.entry-points."fhe_oracle.fitness"]
-    noise_budget = "fhe_oracle_pro.fitness:NoiseBudgetFitness"
+    noise_budget = "your_pkg.fitness:NoiseBudgetFitness"
 
     [project.entry-points."fhe_oracle.heuristics"]
-    generate_seeds = "fhe_oracle_pro.heuristics:generate_seeds"
+    generate_seeds = "your_pkg.heuristics:generate_seeds"
 
 Entry points are loaded lazily on the first ``get_*`` call, so
 importing Core has no side effects from plugins.
 
 Core consumers call ``get_heuristic(name)`` and let the registry
 either return a registered plugin or raise ``KeyError``. Fallbacks
-(e.g. ``_fallback_corner_seeds``) are implemented by the consumer,
+(e.g. ``fallback_corner_seeds``) are implemented by the consumer,
 not by the registry.
+
+Failed plugin loads emit ``RuntimeWarning`` so the operator has
+visibility into supply-chain failures, while still allowing Core to
+function without the broken plugin.
 """
 
 from __future__ import annotations
 
 import importlib.metadata
-from typing import Any, Callable, Optional
+import threading
+import warnings
+from typing import Any
 
 _ENTRY_POINT_GROUPS = {
     "fitness": "fhe_oracle.fitness",
@@ -45,25 +49,33 @@ _entry_points_loaded: dict[str, bool] = {
     "heuristics": False,
 }
 
+_registry_lock = threading.Lock()
+
 
 def _load_entry_points(kind: str) -> None:
-    """Load entry points for a category once; idempotent."""
-    if _entry_points_loaded[kind]:
-        return
-    group = _ENTRY_POINT_GROUPS[kind]
-    try:
-        eps = importlib.metadata.entry_points(group=group)
-    except TypeError:
-        # Python < 3.10 fallback signature
-        eps = importlib.metadata.entry_points().get(group, [])
-    for ep in eps:
+    """Load entry points for a category once; idempotent and thread-safe."""
+    with _registry_lock:
+        if _entry_points_loaded[kind]:
+            return
+        group = _ENTRY_POINT_GROUPS[kind]
         try:
-            obj = ep.load()
-        except Exception:
-            # Broken plugin — ignore rather than crash Core
-            continue
-        _registered[kind].setdefault(ep.name, obj)
-    _entry_points_loaded[kind] = True
+            eps = importlib.metadata.entry_points(group=group)
+        except TypeError:
+            # Python < 3.10 fallback signature
+            eps = importlib.metadata.entry_points().get(group, [])
+        for ep in eps:
+            try:
+                obj = ep.load()
+            except Exception as exc:
+                warnings.warn(
+                    f"fhe-oracle: failed to load {kind} plugin "
+                    f"{ep.name!r} from {ep.value!r}: {exc}",
+                    RuntimeWarning,
+                    stacklevel=2,
+                )
+                continue
+            _registered[kind].setdefault(ep.name, obj)
+        _entry_points_loaded[kind] = True
 
 
 def register_fitness(name: str, factory: Any) -> None:
@@ -85,7 +97,7 @@ def get_fitness(name: str) -> Any:
         raise KeyError(
             f"No fitness function registered under {name!r}. "
             f"Available: {sorted(_registered['fitness'])}. "
-            f"Install fhe-oracle-pro for noise-budget-aware fitness."
+            f"Register via the 'fhe_oracle.fitness' entry-point group."
         ) from None
 
 
@@ -98,8 +110,7 @@ def get_heuristic(name: str) -> Any:
         raise KeyError(
             f"No heuristic registered under {name!r}. "
             f"Available: {sorted(_registered['heuristics'])}. "
-            f"Install fhe-oracle-pro for patented heuristic seed "
-            f"generators (PCT/IB2026/053378 Claim 5)."
+            f"Register via the 'fhe_oracle.heuristics' entry-point group."
         ) from None
 
 

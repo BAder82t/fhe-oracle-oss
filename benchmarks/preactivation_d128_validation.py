@@ -1,6 +1,6 @@
 # Copyright (C) 2026 Bader Alissaei / VaultBytes Innovations Ltd
 # SPDX-License-Identifier: AGPL-3.0-or-later
-"""Preactivation-search validation at d=128 on the LR mock (Proposal 1b).
+"""Preactivation-search boundary test at d=128 on the LR mock.
 
 Compares three search strategies on the existing make_lr_mock(d=128)
 circuit:
@@ -10,10 +10,29 @@ circuit:
                    matching the existing highdim_sweep.csv ratios)
 3. ``preact_k1``  PreactivationOracle k=1 search at B=50
 
-The headline claim Proposal 1 must validate: preact_k1 at B=50 should
-match or beat full-d random at B=2000 on the median-error metric. If
-yes, the "search dim = preactivation rank, not input dim" story holds
-at d=128 and we have empirical license to extend to d=784.
+Outcome: preact_k1 finds ~100x LESS divergence than random at matched
+budget (B=50), and ~145x less than random at B=2000. This is NOT a win
+for preactivation search and NOT the headline claim Proposal 1 makes.
+
+Why this benchmark is kept: it is a deliberate negative / boundary
+case. PreactivationOracle is provably optimal only when the FHE
+divergence factors through the preactivation z = W*x + b. The
+``make_lr_mock`` circuit injects FHE noise that depends on
+``||x||^2 / d`` (input magnitude), which does NOT factor through z.
+The pseudoinverse projection ``x = W^+(z - b)`` returns the min-norm
+preimage, so ||x||^2 stays small and the noise trigger is missed.
+Random sampling occasionally lands in the high-norm region where the
+trigger fires, so random wins on this mock.
+
+The positive-regime headline (preactivation k=1 at B=50 beats random
+by 367x at d=200 and 1961x at d=784) is in
+``benchmarks/preactivation_realckks_d784.py``, where the divergence
+delta(x) = |sigma(z) - sigma_T3(z)| is a pure function of z and the
+factorisation holds exactly.
+
+Reading this script's CSV: the ratios at the bottom are < 1.0 by
+design. They quantify the cost of applying preactivation search
+outside its regime, not its benefit.
 
 Output: benchmarks/results/preactivation_d128_validation.csv
 """
@@ -154,8 +173,17 @@ def main() -> int:
     print(f"  median random_b50    : {m_rand_lo:.4e}")
     print(f"  median random_b2000  : {m_rand_hi:.4e}")
     print(f"  median preact_k1_b50 : {m_preact:.4e}")
-    print(f"  preact / random_b50  : {m_preact / m_rand_lo:.3f}x  (matched budget)")
-    print(f"  preact / random_b2000: {m_preact / m_rand_hi:.3f}x  (40x cheaper budget)")
+    ratio_matched = m_preact / m_rand_lo
+    ratio_full = m_preact / m_rand_hi
+    print(f"  preact / random_b50  : {ratio_matched:.3f}x  (matched B=50)")
+    print(f"  preact / random_b2000: {ratio_full:.3f}x  (vs 40x larger budget)")
+    print(
+        "\n  Note: ratios < 1.0 are expected on this mock. "
+        "make_lr_mock injects ||x||^2-dependent FHE noise, which does\n"
+        "  not factor through z = W*x + b. PreactivationOracle is\n"
+        "  outside its regime here. See module docstring + the d=784\n"
+        "  real-CKKS benchmark for the in-regime headline result."
+    )
     return 0
 
 

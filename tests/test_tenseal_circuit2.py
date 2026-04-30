@@ -1,4 +1,4 @@
-# Copyright (C) 2026 Bader Alissaei
+# Copyright (C) 2026 Bader Alissaei / VaultBytes Innovations Ltd
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """Tests for Circuit 2 (depth-4 polynomial, d=6) on real CKKS."""
 

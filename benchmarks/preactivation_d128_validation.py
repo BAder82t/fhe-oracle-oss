@@ -1,4 +1,4 @@
-# Copyright (C) 2026 Bader Alissaei
+# Copyright (C) 2026 Bader Alissaei / VaultBytes Innovations Ltd
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """Preactivation-search validation at d=128 on the LR mock (Proposal 1b).
 

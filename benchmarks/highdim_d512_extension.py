@@ -1,4 +1,4 @@
-# Copyright (C) 2026 Bader Alissaei
+# Copyright (C) 2026 Bader Alissaei / VaultBytes Innovations Ltd
 # SPDX-License-Identifier: AGPL-3.0-or-later
 """Extension of B2 high-dimensional scaling sweep to d in {256, 512}.
 

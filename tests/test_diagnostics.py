@@ -10,14 +10,17 @@ import sys
 import numpy as np
 import pytest
 
+from fhe_oracle.adapters.base import FHEAdapter
 from fhe_oracle.diagnostics import (
     ComponentLog,
     InstrumentedFitness,
     OperationStep,
     OperationTrace,
     StructureReport,
+    TracingCircuit,
     characterize_structure,
     localize_fault,
+    per_op_trace,
 )
 
 _ANALYSIS_DIR = os.path.abspath(
@@ -263,3 +266,102 @@ def test_characterize_structure_validates_bounds_length():
 def test_characterize_structure_validates_dim_positive():
     with pytest.raises(ValueError):
         characterize_structure(lambda x: 0.0, dim=0, bounds=[])
+
+
+class _FakeScalarAdapter(FHEAdapter):
+    """Identity-encrypt fake adapter: ciphertext IS the plain float.
+
+    Just enough of FHEAdapter to exercise TracingCircuit without a
+    real FHE library, mirroring the fake-adapter pattern used in
+    tests/test_differential.py.
+    """
+
+    def encrypt(self, x):
+        return float(x[0]) if isinstance(x, (list, tuple)) else float(x)
+
+    def decrypt(self, ciphertext):
+        return [float(ciphertext)]
+
+    def run_fhe_program(self, ciphertext):
+        return ciphertext
+
+    def get_noise_budget(self, ciphertext):
+        return 0.0
+
+    def get_mult_depth_used(self, ciphertext):
+        return 0
+
+    def get_scheme_name(self):
+        return "fake"
+
+
+def _build_traced_circuit(buggy: bool):
+    adapter = _FakeScalarAdapter()
+
+    def ct_double(ct):
+        return ct * 2.0
+
+    def ct_square(ct):
+        return ct * ct + (0.5 if buggy else 0.0)
+
+    def ct_plus_one(ct):
+        return ct + 1.0
+
+    def p_double(p):
+        # first plaintext step: p is the raw input (a list), matching
+        # what encrypt(x) reduces to a scalar ciphertext from.
+        return p[0] * 2.0
+
+    def p_square(p):
+        return p * p
+
+    def p_plus_one(p):
+        return p + 1.0
+
+    return TracingCircuit(
+        adapter=adapter,
+        steps=[
+            ("double", ct_double),
+            ("square", ct_square),
+            ("plus_one", ct_plus_one),
+        ],
+        plaintext_steps=[p_double, p_square, p_plus_one],
+    )
+
+
+def test_tracing_circuit_matches_when_correct():
+    circuit = _build_traced_circuit(buggy=False)
+    trace = circuit.trace([3.0])
+    assert len(trace) == 3
+    assert [s.name for s in trace] == ["double", "square", "plus_one"]
+    for step in trace:
+        assert step.step_error == pytest.approx(0.0, abs=1e-9)
+    # (3*2)^2 + 1 = 37
+    assert circuit([3.0]) == pytest.approx(37.0)
+
+
+def test_tracing_circuit_localizes_injected_fault():
+    circuit = _build_traced_circuit(buggy=True)
+    trace = circuit.trace([3.0])
+    assert trace[0].step_error == pytest.approx(0.0, abs=1e-9)  # double: fine
+    assert trace[1].step_error == pytest.approx(0.5, abs=1e-9)  # square: buggy
+    assert trace[2].step_error == pytest.approx(0.5, abs=1e-9)  # propagates
+
+    op_trace = per_op_trace(
+        [3.0],
+        plaintext_fn=lambda x: (x[0] * 2.0) ** 2 + 1.0,
+        fhe_fn=circuit,
+    )
+    assert isinstance(op_trace, OperationTrace)
+    fault = localize_fault(op_trace)
+    assert fault.name == "square"
+
+
+def test_tracing_circuit_rejects_mismatched_step_lengths():
+    adapter = _FakeScalarAdapter()
+    with pytest.raises(ValueError):
+        TracingCircuit(
+            adapter=adapter,
+            steps=[("a", lambda ct: ct)],
+            plaintext_steps=[lambda p: p, lambda p: p],
+        )

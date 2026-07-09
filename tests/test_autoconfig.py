@@ -103,6 +103,74 @@ def test_distant_defect_detection():
     assert result.recommendation["strategy"] == "robust_cma_es"
 
 
+def test_low_rank_structure_detection():
+    """Divergence with genuine low-rank structure (rank 3 of d=20)
+    should classify as LOW_RANK_STRUCTURE."""
+    rng = np.random.default_rng(0)
+    d, true_rank = 20, 3
+    W = rng.standard_normal((true_rank, d))
+
+    def fhe_fn(x):
+        z = W @ np.asarray(x)
+        return 0.01 * float(np.sum(np.sin(z)))
+
+    result = classify_landscape(
+        plaintext_fn=lambda x: 0.0,
+        fhe_fn=fhe_fn,
+        bounds=[(-1.0, 1.0)] * d,
+        n_probes=50,
+        seed=2,
+    )
+    assert result.regime == Regime.LOW_RANK_STRUCTURE
+    assert result.recommendation["strategy"] == "separable_cma_es"
+    assert result.recommendation["effective_rank"] <= d // 2
+
+
+def test_low_rank_structure_not_misclassified_isotropic():
+    """A genuinely full-rank (isotropic) high-d landscape must NOT
+    trigger LOW_RANK_STRUCTURE -- this is the exact regression an
+    earlier dimension-only heuristic caused (see autoconfig.py's
+    STANDARD fall-through comment): d > 100 -> SubspaceOracle was
+    reverted because it fired on isotropic circuits like this one."""
+    rng = np.random.default_rng(1)
+    d = 20
+    coeffs = rng.uniform(0.8, 1.2, size=d)
+
+    def fhe_fn(x):
+        arr = np.asarray(x)
+        return 0.001 * float(np.sum(np.sin(coeffs * arr * 3.0)))
+
+    result = classify_landscape(
+        plaintext_fn=lambda x: 0.0,
+        fhe_fn=fhe_fn,
+        bounds=[(-1.0, 1.0)] * d,
+        n_probes=50,
+        seed=2,
+    )
+    assert result.regime != Regime.LOW_RANK_STRUCTURE
+
+
+def test_low_rank_structure_skipped_below_min_dim():
+    """The structure probe is gated on d >= 16 -- a low-d low-rank
+    circuit still classifies via the earlier regimes / STANDARD."""
+    rng = np.random.default_rng(0)
+    d, true_rank = 8, 2
+    W = rng.standard_normal((true_rank, d))
+
+    def fhe_fn(x):
+        z = W @ np.asarray(x)
+        return 0.01 * float(np.sum(np.sin(z)))
+
+    result = classify_landscape(
+        plaintext_fn=lambda x: 0.0,
+        fhe_fn=fhe_fn,
+        bounds=[(-1.0, 1.0)] * d,
+        n_probes=50,
+        seed=2,
+    )
+    assert result.regime != Regime.LOW_RANK_STRUCTURE
+
+
 def test_classify_requires_positive_n_probes():
     with pytest.raises(ValueError):
         classify_landscape(
@@ -227,6 +295,27 @@ def test_auto_oracle_distant_defect_dispatch():
     result = oracle.run(n_trials=80, seed=1)
     assert result.strategy_used == "robust_cma_es"
     assert result.regime == Regime.DISTANT_DEFECT.value
+
+
+def test_auto_oracle_low_rank_structure_dispatch():
+    """A low-rank divergence landscape dispatches to separable_cma_es."""
+    rng = np.random.default_rng(3)
+    d, true_rank = 20, 2
+    W = rng.standard_normal((true_rank, d))
+
+    def fhe_fn(x):
+        z = W @ np.asarray(x)
+        return 0.01 * float(np.sum(np.sin(z)))
+
+    oracle = AutoOracle(
+        plaintext_fn=lambda x: 0.0,
+        fhe_fn=fhe_fn,
+        bounds=[(-1.0, 1.0)] * d,
+        n_probes=30,
+    )
+    result = oracle.run(n_trials=150, seed=2)
+    assert result.strategy_used == "separable_cma_es"
+    assert result.regime == Regime.LOW_RANK_STRUCTURE.value
 
 
 def test_auto_oracle_plateau_dispatch():

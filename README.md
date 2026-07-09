@@ -176,6 +176,27 @@ Full template: [examples/github_action.yml](./examples/github_action.yml).
   low-rank structure before you reach for `separable=True` or a
   `SubspaceOracle` `subspace_dim`. Returns a `StructureReport` with an
   `effective_rank` estimate and a plain-English recommendation.
+- **Structure-aware `AutoOracle` routing** — a new `LOW_RANK_STRUCTURE`
+  regime measures the divergence surface's actual rank via
+  `characterize_structure` and dispatches to `separable=True` CMA-ES
+  only when real low-rank structure is found (dimension alone is not
+  used, avoiding the earlier `d>100` heuristic's regression on
+  isotropic circuits).
+- **Multi-library differential testing** — `differential_test(adapter_a,
+  adapter_b, input_dim, ...)` searches for inputs where two FHE
+  adapters' decrypted outputs disagree, using only `encrypt`/`decrypt`
+  (no noise-budget API, no reference plaintext function needed).
+- **Property-based fitness functions** — `AdditivityFitness` and
+  `ScalarLinearityFitness` search for algebraic-property violations
+  (`f(a+b) != f(a)+f(b)`, `f(c*x) != c*f(x)`) as drop-in `FHEOracle`
+  fitness objects.
+- **CI diagnostics** — `report.to_markdown`/`to_json` accept an
+  optional `diagnostics` dict, rendered under a `## Diagnostics`
+  section on FAIL. `examples/oracle_check.py` is a real, runnable CI
+  script demonstrating the full shrink-and-report flow.
+- **Adapter-agnostic tracing** — `TracingCircuit` generalises
+  `TracingTenSEALFn`'s per-operation tracing pattern to any `FHEAdapter`
+  for a declared sequence of named steps.
 
 ## Features (v0.5)
 

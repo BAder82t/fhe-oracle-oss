@@ -408,23 +408,82 @@ class TracingTenSEALFn:
         return steps
 
 
+class TracingCircuit:
+    """Adapter-agnostic generalisation of ``TracingTenSEALFn``'s tracing
+    pattern -- works with any ``FHEAdapter`` for a declared linear
+    sequence of named steps (no automatic circuit discovery).
+
+    Parameters
+    ----------
+    adapter : FHEAdapter
+        The FHE backend to run the circuit on.
+    steps : list[tuple[str, Callable[[Any], Any]]]
+        Ordered ``(name, ciphertext_fn)`` pairs; each takes the
+        previous ciphertext and returns the next.
+    plaintext_steps : list[Callable[[Any], Any]]
+        Parallel plaintext functions (same length as ``steps``), each
+        taking the previous plaintext value and returning the next.
+
+    Usable directly as ``fhe_fn`` for :func:`per_op_trace` (via
+    ``__call__``) or standalone via ``.trace(x)``.
+    """
+
+    def __init__(
+        self,
+        adapter: Any,
+        steps: list[tuple[str, Callable]],
+        plaintext_steps: list[Callable],
+    ) -> None:
+        if len(steps) != len(plaintext_steps):
+            raise ValueError(
+                "steps and plaintext_steps must have equal length "
+                f"({len(steps)} != {len(plaintext_steps)})"
+            )
+        self._adapter = adapter
+        self._steps = list(steps)
+        self._plaintext_steps = list(plaintext_steps)
+
+    def __call__(self, x) -> float:
+        ct = self._adapter.encrypt(x)
+        for _, step_fn in self._steps:
+            ct = step_fn(ct)
+        return _output_to_scalar(self._adapter.decrypt(ct))
+
+    def trace(self, x) -> list[OperationStep]:
+        ct = self._adapter.encrypt(x)
+        plain_val: Any = x
+        steps_out: list[OperationStep] = []
+        cum_err = 0.0
+        for (name, ct_step), plain_step in zip(self._steps, self._plaintext_steps):
+            ct = ct_step(ct)
+            plain_val = plain_step(plain_val)
+            f_val = _output_to_scalar(self._adapter.decrypt(ct))
+            p_val = _output_to_scalar(plain_val)
+            step_err = abs(p_val - f_val)
+            if step_err > cum_err:
+                cum_err = step_err
+            steps_out.append(
+                OperationStep(
+                    name=name,
+                    plaintext_value=p_val,
+                    fhe_value=f_val,
+                    step_error=step_err,
+                    cumulative_error=cum_err,
+                    noise_budget=None,
+                )
+            )
+        return steps_out
+
+
 def localize_fault(
     trace: OperationTrace, threshold: Optional[float] = None
 ) -> OperationStep:
     """Return the operation step most likely responsible for the divergence.
 
-    Reads the real, decrypted per-step values already captured by
-    ``per_op_trace``/``.trace()`` -- the first step whose ``step_error``
-    exceeds ``threshold`` (default: 10% of ``total_divergence``). This
-    is ground truth from actual intermediate decryptions, not
-    perturbation-based inference: a perturbation-based localizer was
-    measured statistically indistinguishable from "blame the operation
-    nearest the output" on real CKKS circuits, whereas reading the
-    already-decrypted per-step error directly needs no inference at all.
-
-    If no step crosses ``threshold`` (error is spread evenly across the
-    trace, or the trace is a degenerate single-step trace), falls back
-    to the step with the single largest ``step_error``.
+    First step whose ``step_error`` exceeds ``threshold`` (default: 10%
+    of ``total_divergence``), read directly from ``per_op_trace``'s
+    decrypted values -- no perturbation-based inference. Falls back to
+    the largest ``step_error`` if none cross the threshold.
 
     Raises
     ------
@@ -447,15 +506,8 @@ def localize_fault(
 # ---------------------------------------------------------------------------
 # D: Circuit structure diagnostic
 #
-# Pre-flight tool, not a search improvement. A round of research
-# (2026-07-09) found that search-algorithm changes targeting low-rank
-# structure (e.g. a restricted-covariance CMA-ES) can show a dramatic
-# effect on a synthetic function with EXACTLY known low-rank structure,
-# then show no effect (or worse) on real fhe-oracle circuits whose actual
-# structure is unknown. This diagnostic answers the precondition question
-# -- does this target function actually have exploitable low-rank
-# structure -- BEFORE anyone reaches for separable=True, a SubspaceOracle
-# subspace_dim, or a rank-restricted search strategy.
+# Pre-flight check for exploitable low-rank structure before reaching
+# for separable=True / SubspaceOracle -- measures it instead of assuming it.
 # ---------------------------------------------------------------------------
 
 
@@ -494,17 +546,12 @@ def characterize_structure(
 ) -> StructureReport:
     """One-shot diagnostic: does ``fn`` have low-rank/separable structure?
 
-    Samples ``n_samples`` random points in ``bounds``, estimates the
-    local gradient of ``fn`` at each via central finite differences,
-    stacks the gradients into a Jacobian-sample matrix, and runs SVD.
+    Samples ``n_samples`` points, estimates the gradient at each via
+    central finite differences, and runs SVD on the gradient samples.
     ``effective_rank`` is the smallest number of singular directions
     whose cumulative variance-explained crosses ``variance_threshold``.
-
-    Use this BEFORE choosing ``separable=True`` or a
-    :class:`~fhe_oracle.subspace.SubspaceOracle` ``subspace_dim`` -- it
-    measures whether the assumption those options make (this function
-    has exploitable low-rank structure) actually holds for your
-    circuit, instead of assuming it.
+    Use before choosing ``separable=True`` or a ``SubspaceOracle``
+    ``subspace_dim``.
 
     Parameters
     ----------

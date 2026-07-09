@@ -733,14 +733,10 @@ class FHEOracle:
     ) -> ShrinkResult:
         """Shrink a FAIL witness toward ``reference`` while it still fails.
 
-        Per-coordinate binary search toward a reference point (default:
-        the box centre), keeping ``fitness.score(x) >= threshold`` at
-        every step. This simple coordinate-wise bisection was validated
-        against a more sophisticated constrained-CMA-ES re-optimisation
-        pass: on a real fhe-oracle circuit it won 10/10 seeds (Wilcoxon
-        p=0.00195) with roughly double the median norm reduction and
-        fewer evaluations -- there is no algorithmic benefit to a
-        fancier search here.
+        Per-coordinate binary search, keeping ``fitness.score(x) >=
+        threshold`` at every step. Beat a constrained-CMA-ES
+        re-optimisation pass 10/10 seeds in testing -- no fancier
+        search needed here.
 
         Parameters
         ----------

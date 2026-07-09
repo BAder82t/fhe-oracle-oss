@@ -11,19 +11,42 @@ from __future__ import annotations
 import json
 from dataclasses import asdict
 from datetime import datetime, timezone
+from typing import Any, Optional
 
 from .core import OracleResult
 
 
-def to_json(result: OracleResult, indent: int = 2) -> str:
-    """Serialise an OracleResult to a JSON string."""
+def to_json(
+    result: OracleResult,
+    indent: int = 2,
+    diagnostics: Optional[dict[str, Any]] = None,
+) -> str:
+    """Serialise an OracleResult to a JSON string.
+
+    Parameters
+    ----------
+    diagnostics : dict, optional
+        Included under a top-level ``"diagnostics"`` key when non-empty.
+        Shape is caller-defined.
+    """
     payload = asdict(result)
     payload["generated_at"] = datetime.now(timezone.utc).isoformat()
+    if diagnostics:
+        payload["diagnostics"] = diagnostics
     return json.dumps(payload, indent=indent, default=str)
 
 
-def to_markdown(result: OracleResult) -> str:
-    """Render an OracleResult as a Markdown report."""
+def to_markdown(
+    result: OracleResult, diagnostics: Optional[dict[str, Any]] = None
+) -> str:
+    """Render an OracleResult as a Markdown report.
+
+    Parameters
+    ----------
+    diagnostics : dict, optional
+        Rendered under ``## Diagnostics`` when non-empty and verdict
+        is FAIL.
+    """
     lines = [
         "# FHE Oracle Report",
         "",
@@ -43,5 +66,9 @@ def to_markdown(result: OracleResult) -> str:
     if result.noise_state:
         lines += ["", "## Noise state", ""]
         for k, v in result.noise_state.items():
+            lines.append(f"- **{k}:** {v}")
+    if diagnostics and result.verdict == "FAIL":
+        lines += ["", "## Diagnostics", ""]
+        for k, v in diagnostics.items():
             lines.append(f"- **{k}:** {v}")
     return "\n".join(lines)

@@ -28,11 +28,13 @@ from .diagnostics import (
     OperationStep,
     OperationTrace,
     StructureReport,
+    TracingCircuit,
     TracingTenSEALFn,
     characterize_structure,
     localize_fault,
     per_op_trace,
 )
+from .differential import CrossAdapterFitness, differential_test
 from .diversity import DiversityInjector, InjectionStrategy
 from .empirical import EmpiricalResult, EmpiricalSearch
 from .fitness import DivergenceFitness
@@ -40,16 +42,19 @@ from .guarantees import CoverageCertificate, confidence_adjusted_pass
 from .hybrid import HybridResult, run_hybrid
 from .multi_output import MultiOutputFitness, MultiOutputMode
 from .preactivation import PreactivationOracle, PreactivationResult
+from .properties import AdditivityFitness, ScalarLinearityFitness
 from .subspace import SubspaceOracle
 
 __all__ = [
     "AdaptiveBudget",
     "AdaptiveConfig",
+    "AdditivityFitness",
     "AutoOracle",
     "CascadeResult",
     "CascadeSearch",
     "ComponentLog",
     "CoverageCertificate",
+    "CrossAdapterFitness",
     "DivergenceFitness",
     "DiversityInjector",
     "EmpiricalResult",
@@ -67,13 +72,16 @@ __all__ = [
     "PreactivationResult",
     "ProbeResult",
     "Regime",
+    "ScalarLinearityFitness",
     "ShrinkResult",
     "StructureReport",
     "SubspaceOracle",
+    "TracingCircuit",
     "TracingTenSEALFn",
     "characterize_structure",
     "classify_landscape",
     "confidence_adjusted_pass",
+    "differential_test",
     "evaluate_correlation",
     "localize_fault",
     "per_op_trace",

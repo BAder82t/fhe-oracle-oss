@@ -54,6 +54,8 @@ from typing import Any, Callable, Optional
 import numpy as np
 from scipy.stats import spearmanr
 
+from .diagnostics import characterize_structure
+
 
 _PROBE_SEED_SALT = 0xB0B3  # deterministic seed salt for probe RNG
 
@@ -129,7 +131,13 @@ class Regime(Enum):
     PLATEAU_THEN_CLIFF = "plateau_then_cliff"
     DISTANT_DEFECT = "distant_defect"
     PREACTIVATION_DOMINATED = "preactivation_dominated"
+    LOW_RANK_STRUCTURE = "low_rank_structure"
     STANDARD = "standard"
+
+
+_LOW_RANK_MIN_DIM = 16
+_LOW_RANK_STRUCTURE_SAMPLES = 100
+_LOW_RANK_RANK_FRACTION = 0.5
 
 
 _DISTANT_DEFECT_CENTER_PROBES = 20
@@ -404,7 +412,39 @@ def classify_landscape(
             },
         )
 
-    # 5. Standard fall-through.
+    # 5. Low-rank structure in the divergence surface (measured via SVD,
+    #    not dimension alone -- the d>100->SubspaceOracle heuristic
+    #    below was reverted for firing on isotropic high-d circuits).
+    if d >= _LOW_RANK_MIN_DIM:
+        def _delta(x: list[float]) -> float:
+            return _divergence(plaintext_fn, fhe_fn, np.asarray(x))
+
+        structure = characterize_structure(
+            _delta,
+            d,
+            bounds,
+            n_samples=_LOW_RANK_STRUCTURE_SAMPLES,
+            seed=int(seed) ^ _PROBE_SEED_SALT ^ 0x10AA,
+        )
+        if structure.effective_rank > 0 and structure.effective_rank <= int(
+            d * _LOW_RANK_RANK_FRACTION
+        ):
+            return ProbeResult(
+                regime=Regime.LOW_RANK_STRUCTURE,
+                probe_divergences=divs,
+                recommendation={
+                    "strategy": "separable_cma_es",
+                    "reason": (
+                        f"characterize_structure found effective_rank="
+                        f"{structure.effective_rank} of dim={d} "
+                        f"-- diagonal-covariance search is likely to help"
+                    ),
+                    "separable": True,
+                    "effective_rank": structure.effective_rank,
+                },
+            )
+
+    # 6. Standard fall-through.
     return ProbeResult(
         regime=Regime.STANDARD,
         probe_divergences=divs,
@@ -581,6 +621,25 @@ class AutoOracle:
                 n_trials=remaining_budget, threshold=threshold, **run_kwargs
             )
             return self._attach_meta(result, regime, "robust_cma_es")
+
+        if regime == Regime.LOW_RANK_STRUCTURE:
+            from .core import FHEOracle
+
+            kw = {"separable": True}
+            kw.update(self.oracle_kwargs)
+
+            oracle = FHEOracle(
+                plaintext_fn=self.plaintext_fn,
+                fhe_fn=self.fhe_fn,
+                input_dim=self.d,
+                input_bounds=self.bounds,
+                seed=seed,
+                **kw,
+            )
+            result = oracle.run(
+                n_trials=remaining_budget, threshold=threshold, **run_kwargs
+            )
+            return self._attach_meta(result, regime, "separable_cma_es")
 
         if regime == Regime.PREACTIVATION_DOMINATED:
             from .preactivation import PreactivationOracle

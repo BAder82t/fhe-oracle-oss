@@ -38,6 +38,9 @@ concrete = ["concrete-ml>=1.0.0"]
 sklearn = ["scikit-learn>=1.0"]
 dev = ["pytest>=7.0", "pytest-cov", "build", "twine"]
 
+[project.scripts]
+fhe-oracle = "fhe_oracle.cli:main"
+
 [project.urls]
 Homepage = "https://github.com/BAder82t/fhe-oracle"
 Issues = "https://github.com/BAder82t/fhe-oracle/issues"

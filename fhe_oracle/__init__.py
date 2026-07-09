@@ -21,6 +21,7 @@ Public API
 from .adaptive import AdaptiveBudget, AdaptiveConfig
 from .autoconfig import AutoOracle, ProbeResult, Regime, classify_landscape
 from .cascade import CascadeResult, CascadeSearch, evaluate_correlation
+from .check import CheckResult, check
 from .core import FHEOracle, OracleResult, ShrinkResult
 from .diagnostics import (
     ComponentLog,
@@ -52,6 +53,7 @@ __all__ = [
     "AutoOracle",
     "CascadeResult",
     "CascadeSearch",
+    "CheckResult",
     "ComponentLog",
     "CoverageCertificate",
     "CrossAdapterFitness",
@@ -79,6 +81,7 @@ __all__ = [
     "TracingCircuit",
     "TracingTenSEALFn",
     "characterize_structure",
+    "check",
     "classify_landscape",
     "confidence_adjusted_pass",
     "differential_test",

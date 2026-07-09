@@ -483,7 +483,9 @@ class AutoOracle:
     Notes
     -----
     After :meth:`run`, ``self.probe_result`` exposes the full
-    :class:`ProbeResult` including the probe divergences.
+    :class:`ProbeResult`, and ``self.last_oracle`` exposes the inner
+    ``FHEOracle`` instance (e.g. for ``.shrink()``) -- ``None`` when
+    dispatch used ``PreactivationOracle`` instead.
     """
 
     def __init__(
@@ -507,6 +509,7 @@ class AutoOracle:
         self.n_probes = int(n_probes)
         self.oracle_kwargs = oracle_kwargs
         self.probe_result: Optional[ProbeResult] = None
+        self.last_oracle: Optional[Any] = None  # inner FHEOracle from the last run(); None for PreactivationOracle dispatch
 
     def _attach_meta(self, result, regime: Regime, strategy: str):
         """Tag result with regime/strategy. Works for OracleResult and
@@ -548,6 +551,7 @@ class AutoOracle:
             raise ValueError(
                 f"n_trials ({n_trials}) must exceed n_probes ({self.n_probes})"
             )
+        self.last_oracle = None  # reset -- stays None if this run dispatches to PreactivationOracle
 
         self.probe_result = classify_landscape(
             self.plaintext_fn,
@@ -574,6 +578,7 @@ class AutoOracle:
                 random_floor=1.0,
                 **self.oracle_kwargs,
             )
+            self.last_oracle = oracle
             result = oracle.run(
                 n_trials=remaining_budget, threshold=threshold, **run_kwargs
             )
@@ -592,6 +597,7 @@ class AutoOracle:
                 warm_start=True,
                 **self.oracle_kwargs,
             )
+            self.last_oracle = oracle
             result = oracle.run(
                 n_trials=remaining_budget, threshold=threshold, **run_kwargs
             )
@@ -617,6 +623,7 @@ class AutoOracle:
                 seed=seed,
                 **kw,
             )
+            self.last_oracle = oracle
             result = oracle.run(
                 n_trials=remaining_budget, threshold=threshold, **run_kwargs
             )
@@ -636,6 +643,7 @@ class AutoOracle:
                 seed=seed,
                 **kw,
             )
+            self.last_oracle = oracle
             result = oracle.run(
                 n_trials=remaining_budget, threshold=threshold, **run_kwargs
             )
@@ -673,6 +681,7 @@ class AutoOracle:
             seed=seed,
             **self.oracle_kwargs,
         )
+        self.last_oracle = oracle
         result = oracle.run(
             n_trials=remaining_budget, threshold=threshold, **run_kwargs
         )

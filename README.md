@@ -162,6 +162,16 @@ Full template: [examples/github_action.yml](./examples/github_action.yml).
 
 ## Features (v0.6)
 
+- **One-call check** — `check(plaintext_fn, fhe_fn, input_bounds)` runs
+  `AutoOracle` and, on FAIL, automatically shrinks the witness and
+  localizes the fault (if the circuit supports tracing), returning a
+  `CheckResult` with a ready-to-print report. Replaces the run →
+  check-verdict → shrink → trace → render sequence with one call.
+- **CLI** — `fhe-oracle check model.py` runs the same flow against a
+  Python file defining `plaintext_fn`/`fhe_fn`/`input_bounds` at module
+  level (optionally `n_trials`/`threshold`/`seed` too, overridable via
+  `--n-trials`/`--threshold`/`--seed`/`--format`/`--no-shrink`). Exits
+  0 on PASS, 1 on FAIL, 2 on a malformed model file.
 - **Witness shrinking** — `FHEOracle.shrink(result)` reduces a FAIL
   witness toward a reference point (default: box centre) via
   per-coordinate binary search, while divergence keeps meeting the

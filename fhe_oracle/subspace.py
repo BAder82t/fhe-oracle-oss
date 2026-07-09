@@ -69,9 +69,18 @@ Example
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any, Callable, Optional
 
 import numpy as np
+
+
+@dataclass
+class _Tracker:
+    """Best in-bounds divergence seen so far, shared with the fitness."""
+
+    best_error: float = float("-inf")
+    best_x: Optional[np.ndarray] = None
 
 
 class _ClipPenaltyFitness:
@@ -81,7 +90,7 @@ class _ClipPenaltyFitness:
     true divergence at ``x``, and subtracts a clip-distance penalty so
     CMA-ES is steered toward in-bounds inputs without being hard-
     blocked from out-of-bounds exploration. Tracks the best in-bounds
-    divergence seen so far in a shared ``tracker`` dict.
+    divergence seen so far in a shared :class:`_Tracker`.
     """
 
     def __init__(
@@ -93,7 +102,7 @@ class _ClipPenaltyFitness:
         lo: np.ndarray,
         hi: np.ndarray,
         clip_penalty: float,
-        tracker: dict,
+        tracker: _Tracker,
     ) -> None:
         self._plain = plain_fn
         self._fhe = fhe_fn
@@ -114,16 +123,13 @@ class _ClipPenaltyFitness:
             f = self._fhe(x_clipped)
         except Exception:
             return 0.0
-        if np.isscalar(p) and np.isscalar(f):
-            div = abs(float(p) - float(f))
-        else:
-            p_arr = np.atleast_1d(np.asarray(p, dtype=np.float64)).ravel()
-            f_arr = np.atleast_1d(np.asarray(f, dtype=np.float64)).ravel()
-            n = min(p_arr.size, f_arr.size)
-            div = float(np.max(np.abs(p_arr[:n] - f_arr[:n]))) if n > 0 else 0.0
-        if div > self._tracker["best_error"]:
-            self._tracker["best_error"] = div
-            self._tracker["best_x"] = x_clipped.copy()
+        p_arr = np.atleast_1d(np.asarray(p, dtype=np.float64)).ravel()
+        f_arr = np.atleast_1d(np.asarray(f, dtype=np.float64)).ravel()
+        n = min(p_arr.size, f_arr.size)
+        div = float(np.max(np.abs(p_arr[:n] - f_arr[:n]))) if n > 0 else 0.0
+        if div > self._tracker.best_error:
+            self._tracker.best_error = div
+            self._tracker.best_x = x_clipped.copy()
         return div - self._k * clip_dist
 
 
@@ -338,12 +344,12 @@ class SubspaceOracle:
     def _measure_divergence(self, x: np.ndarray) -> float:
         """True |plain(x) - fhe(x)|, reducer-max."""
         try:
-            p = self.plaintext_fn(x)
-            f = self.fhe_fn(x)
-            if np.isscalar(p) and np.isscalar(f):
-                return float(abs(p - f))
-            p_arr = np.atleast_1d(np.asarray(p, dtype=np.float64)).ravel()
-            f_arr = np.atleast_1d(np.asarray(f, dtype=np.float64)).ravel()
+            p_arr = np.atleast_1d(
+                np.asarray(self.plaintext_fn(x), dtype=np.float64)
+            ).ravel()
+            f_arr = np.atleast_1d(
+                np.asarray(self.fhe_fn(x), dtype=np.float64)
+            ).ravel()
             n = min(p_arr.size, f_arr.size)
             if n == 0:
                 return 0.0
@@ -416,7 +422,7 @@ class SubspaceOracle:
                 if budget_remaining <= 0:
                     break
                 this_budget = min(budget_per, budget_remaining)
-                tracker = {"best_error": -np.inf, "best_x": None}
+                tracker = _Tracker()
                 fitness = _ClipPenaltyFitness(
                     plain_fn=self.plaintext_fn,
                     fhe_fn=self.fhe_fn,
@@ -445,11 +451,11 @@ class SubspaceOracle:
                 # Record the best in-bounds divergence the fitness
                 # witnessed (clip penalty is excluded from this number).
                 if (
-                    tracker["best_x"] is not None
-                    and tracker["best_error"] > best_error
+                    tracker.best_x is not None
+                    and tracker.best_error > best_error
                 ):
-                    best_error = float(tracker["best_error"])
-                    best_x = np.asarray(tracker["best_x"], dtype=np.float64)
+                    best_error = float(tracker.best_error)
+                    best_x = np.asarray(tracker.best_x, dtype=np.float64)
                     best_proj_idx = proj_idx
                     best_result = result
 

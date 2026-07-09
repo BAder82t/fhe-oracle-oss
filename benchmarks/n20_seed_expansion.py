@@ -27,7 +27,6 @@ import csv
 import os
 import sys
 import time
-from typing import Any, Iterable
 
 import numpy as np
 from scipy.stats import wilcoxon
@@ -37,10 +36,8 @@ ROOT = os.path.abspath(os.path.join(THIS_DIR, ".."))
 sys.path.insert(0, ROOT)
 sys.path.insert(0, THIS_DIR)
 
-from fhe_oracle import FHEOracle  # noqa: E402
 from fhe_oracle.adapters.tenseal_adapter import HAVE_TENSEAL, TenSEALContext  # noqa: E402
-from fhe_oracle.empirical import EmpiricalSearch  # noqa: E402
-from fhe_oracle.hybrid import _default_divergence_fn, run_hybrid  # noqa: E402
+from fhe_oracle.hybrid import run_hybrid  # noqa: E402
 
 # Re-use primitives from existing benchmark modules.
 from ablation_heuristics import (  # noqa: E402
@@ -69,10 +66,6 @@ from tenseal_circuit2_validation import (  # noqa: E402
 )
 from external_sweep import (  # noqa: E402
     BUDGET as EXT_BUDGET,
-    JITTER as EXT_JITTER,
-    THRESHOLD as EXT_THRESHOLD,
-    _bounds_for,
-    _random_baseline_result,
     run_circuit_cells,  # handles oracle_only, random_only, empirical_only, hybrid_union per seed
 )
 from wdbc_mock import build_wdbc_circuit  # noqa: E402
@@ -172,7 +165,7 @@ def _uniform_random_on_circuit(circuit: dict, budget: int, seed: int) -> float:
 
 def exp_1a_random_baselines(n_trials: int = 500) -> None:
     print("\n" + "=" * 70)
-    print(f"[1a.random] Table-1 uniform-random baselines on 3 mocks, seeds 0..19")
+    print("[1a.random] Table-1 uniform-random baselines on 3 mocks, seeds 0..19")
     print("=" * 70)
     circuits = [make_circuit1(), make_circuit2(), make_circuit3()]
     rows: list[dict] = []

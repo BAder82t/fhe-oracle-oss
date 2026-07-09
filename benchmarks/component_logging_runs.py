@@ -22,7 +22,6 @@ import os
 import sys
 import time
 
-import numpy as np
 
 sys.path.insert(
     0, os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -85,7 +84,7 @@ def main(n_trials: int = 500, seeds: list[int] | None = None) -> int:
     summary_path = os.path.join(base_dir, "results", "component_logs_summary.csv")
 
     total = len(circuits) * len(seeds)
-    print(f"C5 component-logging runs")
+    print("C5 component-logging runs")
     print(f"  Circuits: {len(circuits)}  ({[c['name'] for c in circuits]})")
     print(f"  Seeds:    {len(seeds)}  ({seeds})")
     print(f"  Budget:   B={n_trials}")

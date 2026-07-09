@@ -70,7 +70,6 @@ from polynomial_eval import mock_fhe_poly, plaintext_poly  # noqa: E402
 from chebyshev_polynomials import (  # noqa: E402
     eval_poly_plaintext,
     fit_cheb_sigmoid,
-    taylor3_approx,
 )
 
 

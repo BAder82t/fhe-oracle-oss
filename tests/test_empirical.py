@@ -7,7 +7,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from fhe_oracle.empirical import EmpiricalResult, EmpiricalSearch
+from fhe_oracle.empirical import EmpiricalSearch
 
 
 def _make_plant_data(n: int = 50, d: int = 4, plant_idx: int = 0,

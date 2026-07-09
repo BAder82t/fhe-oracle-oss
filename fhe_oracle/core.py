@@ -36,7 +36,7 @@ from .seeds import fallback_corner_seeds
 
 def _build_seeds(
     rng: np.random.Generator,
-    bounds: Optional[list[tuple[float, float]]],
+    bounds: list[tuple[float, float]],
     k: int,
     which: tuple[str, ...],
     tau: Optional[float],
@@ -75,9 +75,14 @@ class OracleResult:
         Wall-clock search time.
     scheme : str
         FHE scheme name (from adapter) or "plaintext-diff" in pure mode.
-    noise_state : dict[str, float]
+    noise_state : dict[str, float | str]
         Noise-budget snapshot at worst_input when an adapter was used.
-        Empty dict in pure-divergence mode.
+        Empty dict in pure-divergence mode. Holds a single ``"error"``
+        string key instead if re-measurement raised.
+    strategy_used, subspace_dim, n_projections, n_anchors,
+    projection_index, probe_max, fallback_taken
+        Set only by :class:`~fhe_oracle.subspace.SubspaceOracle`;
+        ``None``/unset otherwise. See that class for their meaning.
     """
 
     verdict: str
@@ -87,12 +92,19 @@ class OracleResult:
     n_trials: int
     elapsed_seconds: float
     scheme: str = "plaintext-diff"
-    noise_state: dict[str, float] = field(default_factory=dict)
+    noise_state: dict[str, float | str] = field(default_factory=dict)
     coverage_certificate: Optional["CoverageCertificate"] = None
     n_restarts_used: int = 0
     adaptive_stop_reason: Optional[str] = None
     adaptive_extensions_used: int = 0
     diversity_injections: int = 0
+    strategy_used: Optional[str] = None
+    subspace_dim: Optional[int] = None
+    n_projections: Optional[int] = None
+    n_anchors: Optional[int] = None
+    projection_index: Optional[int] = None
+    probe_max: Optional[float] = None
+    fallback_taken: Optional[bool] = None
 
     def __repr__(self) -> str:
         return (
@@ -268,6 +280,11 @@ class FHEOracle:
                     plaintext_fn, lambda x: adapter.evaluate(x)
                 )
         else:
+            # Guaranteed non-None: the constructor's top-level check
+            # rejects fitness=None, fhe_fn=None, adapter=None together,
+            # and this branch is only reached when fitness and adapter
+            # are both None.
+            assert fhe_fn is not None
             self._fitness = DivergenceFitness(plaintext_fn, fhe_fn)
 
         # Adaptive + diversity configuration (default OFF -> existing
@@ -494,8 +511,8 @@ class FHEOracle:
                         es.tell(solutions, [-f for f in fitnesses])
                         # Spend remaining CMA-ES budget on uniform random.
                         if self._bounds is not None:
-                            lows_b = np.array([lo for lo, _ in self._bounds])
-                            highs_b = np.array([hi for _, hi in self._bounds])
+                            lows_b = [lo for lo, _ in self._bounds]
+                            highs_b = [hi for _, hi in self._bounds]
                             switch_seed = (
                                 (self._seed if self._seed is not None else 0) ^ 0x5736
                             )
@@ -593,6 +610,10 @@ class FHEOracle:
                     rng_inj = np.random.default_rng(
                         (self._seed if self._seed is not None else 0) ^ 0xC0FFEE
                     )
+                    # Guaranteed non-None: this branch is only reached
+                    # when self._restarts > 0, which raises above if
+                    # self._bounds is None.
+                    assert self._bounds is not None
                     seeds_injected = _build_seeds(
                         rng_inj,
                         self._bounds,
@@ -642,7 +663,7 @@ class FHEOracle:
 
         elapsed = time.perf_counter() - t0
 
-        max_error, noise_state = self._measure_divergence(best_input)
+        max_error, noise_state = self._measure_divergence(best_input, best_score)
         verdict = "PASS" if max_error < threshold else "FAIL"
 
         return OracleResult(
@@ -662,10 +683,21 @@ class FHEOracle:
         )
 
     def _measure_divergence(
-        self, x: list[float]
-    ) -> tuple[float, dict[str, float]]:
-        """Re-evaluate x in pure-divergence terms and capture noise state."""
-        noise_state: dict[str, float] = {}
+        self, x: list[float], fallback_score: float
+    ) -> tuple[float, dict[str, float | str]]:
+        """Re-evaluate x in pure-divergence terms and capture noise state.
+
+        Falls back to ``fallback_score`` (the fitness score already
+        computed for ``x`` during search) when neither an adapter nor
+        ``fhe_fn`` is available to independently recompute divergence
+        -- i.e. pure custom-fitness mode. Without this, the previous
+        behaviour called the (None) ``fhe_fn``, the exception handler
+        swallowed the resulting TypeError, and the run silently
+        reported ``max_error=0.0`` -- a false PASS.
+        """
+        noise_state: dict[str, float | str] = {}
+        if self._adapter is None and self._fhe_fn is None:
+            return fallback_score, noise_state
         try:
             if self._adapter is not None:
                 ct_in = self._adapter.encrypt(x)
@@ -680,6 +712,7 @@ class FHEOracle:
                     "depth_used": float(depth_used),
                 }
             else:
+                assert self._fhe_fn is not None  # guaranteed by the early return above
                 fhe_val = _to_array(self._fhe_fn(x))
 
             plain_val = _to_array(self._plaintext_fn(x))

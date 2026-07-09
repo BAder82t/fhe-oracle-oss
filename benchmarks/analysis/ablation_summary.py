@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import csv
 import os
-import sys
 from collections import defaultdict
 
 import numpy as np

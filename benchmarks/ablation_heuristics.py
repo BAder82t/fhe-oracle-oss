@@ -33,7 +33,7 @@ import csv
 import os
 import sys
 import time
-from typing import Any, Callable
+from typing import Any
 
 import numpy as np
 
@@ -41,7 +41,6 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 
 from fhe_oracle import FHEOracle
-from fhe_oracle.fitness import DivergenceFitness
 
 from polynomial_eval import mock_fhe_poly, plaintext_poly
 
@@ -238,7 +237,7 @@ def main(n_trials: int = 100, seeds: list[int] | None = None) -> int:
     out_path = os.path.join(out_dir, "ablation_heuristics.csv")
 
     total = len(CONFIGS) * len(circuits) * len(seeds)
-    print(f"S0 Heuristic Lesion Audit")
+    print("S0 Heuristic Lesion Audit")
     print(f"  Configs:  {len(CONFIGS)}  ({list(CONFIGS.keys())})")
     print(f"  Circuits: {len(circuits)} ({[c['name'] for c in circuits]})")
     print(f"  Seeds:    {len(seeds)} ({seeds})")

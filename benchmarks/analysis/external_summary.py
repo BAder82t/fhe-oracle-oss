@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import csv
 import os
-from collections import defaultdict
 
 import numpy as np
 from scipy.stats import wilcoxon

@@ -8,7 +8,6 @@ import numpy as np
 import pytest
 
 from fhe_oracle import FHEOracle, OracleResult
-from fhe_oracle.fitness import DivergenceFitness
 
 
 def _square(x):
@@ -87,6 +86,28 @@ def test_custom_fitness():
     )
     oracle.run(n_trials=40, threshold=1.0)
     assert calls["n"] >= 1
+
+
+def test_custom_fitness_without_fhe_fn_or_adapter_reports_fitness_score():
+    """Pure custom-fitness mode (no fhe_fn, no adapter) must report the
+    fitness's own best score as max_error instead of silently defaulting
+    to 0.0 -- previously this path called the (None) fhe_fn, swallowed
+    the resulting TypeError, and reported a false PASS."""
+
+    class HighDivergenceFitness:
+        def score(self, x):
+            return 5.0
+
+    oracle = FHEOracle(
+        plaintext_fn=_square,
+        input_dim=2,
+        fitness=HighDivergenceFitness(),
+        seed=0,
+    )
+    result = oracle.run(n_trials=10, threshold=1.0)
+    assert result.max_error == 5.0
+    assert result.verdict == "FAIL"
+    assert result.noise_state == {}
 
 
 def test_result_is_serialisable():

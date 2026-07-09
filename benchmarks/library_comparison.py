@@ -35,7 +35,7 @@ import os
 import sys
 import time
 from dataclasses import dataclass, asdict
-from typing import Any, Callable
+from typing import Callable
 
 import numpy as np
 
@@ -814,7 +814,7 @@ def main() -> int:
             selected = [b for b in builders if b.startswith("openfhe-")]
 
     print(f"Circuit family: {args.circuit} -- {circuit['label']}")
-    print(f"Library availability:")
+    print("Library availability:")
     for li in all_libs.values():
         marker = "✓" if li.available else "✗"
         print(f"  {marker} {li.name:15s} {str(li.version or '-'):15s} "

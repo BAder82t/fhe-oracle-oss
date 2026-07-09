@@ -84,7 +84,7 @@ def main() -> int:
                      "max_error": err, "wall_clock_s": wall, "n_trials": n})
         print(f"  seed={seed} err={err:.4e} wall={wall:.2f}s", flush=True)
 
-    print(f"\n[2/2] preact k=1 B=50", flush=True)
+    print("\n[2/2] preact k=1 B=50", flush=True)
     pre = PreactivationOracle(
         W=w.reshape(1, -1), b=np.array([b]),
         plaintext_fn=plain, fhe_fn=fhe,

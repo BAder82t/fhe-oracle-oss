@@ -76,7 +76,7 @@ def main() -> int:
     print("TenSEAL real-CKKS Circuit 2 validation (Limitation-1 port)")
     print(f"  Budget B    = {B_TENSEAL}")
     print(f"  Seeds       = {SEEDS}")
-    print(f"  d           = 6")
+    print("  d           = 6")
     print(f"  Adversarial = {ADVERSARIAL_BOUNDS[0]}")
     print(f"  Operational = {OPERATIONAL_BOUNDS[0]}")
     print("=" * 80)

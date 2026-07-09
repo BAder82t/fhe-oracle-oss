@@ -29,7 +29,6 @@ from __future__ import annotations
 
 import csv
 import os
-import sys
 from typing import Iterable
 
 import numpy as np
@@ -208,7 +207,7 @@ def cross_seed_verdict(
 
 def main() -> int:
     rows: list[dict] = []
-    print(f"C5 change-point analysis")
+    print("C5 change-point analysis")
     print(f"  Logs directory: {LOG_DIR}")
     print(f"  Circuits: {CIRCUITS}")
     print(f"  Components: {COMPONENTS}")

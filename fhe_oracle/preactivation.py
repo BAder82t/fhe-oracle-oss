@@ -46,12 +46,11 @@ Usage
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Callable, Iterable, Optional
+from typing import Any, Callable, Iterable
 
 import numpy as np
 
 from .core import FHEOracle
-from .fitness import DivergenceFitness
 
 
 @dataclass
@@ -244,7 +243,8 @@ class PreactivationOracle:
         # check; the search itself uses the custom fitness above. We
         # overwrite max_error/worst_input after the run so these are
         # only used to keep the inner oracle's invariants happy.
-        _zero_fn = lambda _z: 0.0
+        def _zero_fn(_z: list[float]) -> float:
+            return 0.0
 
         results: list[PreactivationResult] = []
         for seed in seeds:
@@ -302,7 +302,7 @@ class PreactivationOracle:
         for seed in seeds:
             t0 = time.perf_counter()
             best_score = -np.inf
-            best_z = grid[0]
+            best_z: float = float(grid[0])
             n_evals = 0
 
             for z_val in grid:
@@ -316,13 +316,13 @@ class PreactivationOracle:
             rng = np.random.default_rng(int(seed))
             span = (hi - lo) / max(1, n_grid - 1)
             for _ in range(n_rand):
-                z_val = best_z + float(rng.normal(0.0, span))
-                z_val = float(np.clip(z_val, lo, hi))
-                s = fitness.score(np.array([z_val]))
+                rand_z = best_z + float(rng.normal(0.0, span))
+                rand_z = float(np.clip(rand_z, lo, hi))
+                s = fitness.score(np.array([rand_z]))
                 n_evals += 1
                 if s > best_score:
                     best_score = s
-                    best_z = z_val
+                    best_z = rand_z
 
             best_x, clip_dist = self.z_to_x(np.array([best_z]))
             true_err = self.measure_divergence_at(best_x)

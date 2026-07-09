@@ -130,6 +130,7 @@ def run_hybrid(
     else:
         union_verdict = "PASS"
 
+    worst: Any
     if oracle_result.max_error >= empirical_result.max_error:
         max_err = oracle_result.max_error
         worst = oracle_result.worst_input

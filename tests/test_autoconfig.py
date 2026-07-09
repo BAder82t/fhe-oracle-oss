@@ -84,6 +84,25 @@ def test_plateau_detection():
     assert result.regime in (Regime.PLATEAU_THEN_CLIFF, Regime.STANDARD)
 
 
+def test_distant_defect_detection():
+    """Defect confined to a thin shell far from the box centre should
+    classify as DISTANT_DEFECT: a sigma=1.0 Gaussian ball around the
+    box midpoint essentially never reaches the shell, but full-box
+    uniform probes do."""
+    def fhe_fn(x):
+        return 5.0 if abs(x[0]) > 15.0 else 0.0
+
+    result = classify_landscape(
+        plaintext_fn=lambda x: 0.0,
+        fhe_fn=fhe_fn,
+        bounds=[(-20.0, 20.0)],
+        n_probes=50,
+        seed=1,
+    )
+    assert result.regime == Regime.DISTANT_DEFECT
+    assert result.recommendation["strategy"] == "robust_cma_es"
+
+
 def test_classify_requires_positive_n_probes():
     with pytest.raises(ValueError):
         classify_landscape(
@@ -191,6 +210,49 @@ def test_auto_oracle_saturation_dispatch():
     result = oracle.run(n_trials=60, seed=1)
     assert result.strategy_used == "random_only"
     assert result.regime == Regime.FULL_DOMAIN_SATURATION.value
+
+
+def test_auto_oracle_distant_defect_dispatch():
+    """A defect confined to a thin shell far from the box centre
+    dispatches to robust_cma_es (sigma0=auto + heuristic seeds)."""
+    def fhe_fn(x):
+        return 5.0 if abs(x[0]) > 15.0 else 0.0
+
+    oracle = AutoOracle(
+        plaintext_fn=lambda x: 0.0,
+        fhe_fn=fhe_fn,
+        bounds=[(-20.0, 20.0)] * 2,
+        n_probes=30,
+    )
+    result = oracle.run(n_trials=80, seed=1)
+    assert result.strategy_used == "robust_cma_es"
+    assert result.regime == Regime.DISTANT_DEFECT.value
+
+
+def test_auto_oracle_plateau_dispatch():
+    """A plateau-then-cliff landscape dispatches to warm_start."""
+    rng_state = {"i": 0}
+    plateau_vals = np.concatenate([
+        np.full(47, 0.098),
+        np.array([0.30, 0.34, 0.36]),
+    ])
+    rng = np.random.RandomState(7)
+    rng.shuffle(plateau_vals)
+
+    def fhe_fn(x):
+        idx = rng_state["i"] % plateau_vals.size
+        rng_state["i"] += 1
+        return float(plateau_vals[idx])
+
+    oracle = AutoOracle(
+        plaintext_fn=lambda x: 0.0,
+        fhe_fn=fhe_fn,
+        bounds=[(-3.0, 3.0)] * 5,
+        n_probes=50,
+    )
+    result = oracle.run(n_trials=100, seed=0)
+    assert result.strategy_used == "warm_start"
+    assert result.regime == Regime.PLATEAU_THEN_CLIFF.value
 
 
 # --- _detect_plateau_cliff --------------------------------------------

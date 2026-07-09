@@ -256,7 +256,7 @@ def main() -> int:
     summary_path = os.path.join(out_dir, "broader_benchmarks_summary.csv")
 
     print("Broader external benchmarks (Limitation 2)")
-    print(f"  Compiler  : Concrete-ML (TFHE)")
+    print("  Compiler  : Concrete-ML (TFHE)")
     print(f"  Seeds     : {SEEDS}")
     print(f"  Budget    : {BUDGET} per leg")
     print(f"  Threshold : {THRESHOLD}")

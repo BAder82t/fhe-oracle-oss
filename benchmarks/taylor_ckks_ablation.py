@@ -214,12 +214,12 @@ def main() -> int:
     dim = 8
 
     total_cells = len(POLY_ARMS) * len(SCALE_BITS)
-    print(f"C2 Taylor-vs-CKKS parameter ablation")
+    print("C2 Taylor-vs-CKKS parameter ablation")
     print(f"  Polynomials: {[a[0] for a in POLY_ARMS]}")
     print(f"  Scales:      {[f'2^{s}' for s in SCALE_BITS]}")
     print(f"  Seeds:       {SEEDS}")
     print(f"  Budget:      {BUDGET}")
-    print(f"  Circuit:     LR d=8 (synthetic, paper seed=42)")
+    print("  Circuit:     LR d=8 (synthetic, paper seed=42)")
     print(f"  Output:      {out_path}")
     print("=" * 80)
 

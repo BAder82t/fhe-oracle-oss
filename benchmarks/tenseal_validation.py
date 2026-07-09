@@ -114,7 +114,7 @@ def main() -> int:
     wdbc = build_tenseal_wdbc(ctx_wdbc)
 
     # --- Experiment 1: LR matched ---
-    print(f"\n[1/6] LR d=8 matched  (paper: 2.28× mean, 7/10 wins)")
+    print("\n[1/6] LR d=8 matched  (paper: 2.28× mean, 7/10 wins)")
     for seed in SEEDS:
         t0 = time.perf_counter()
         ores = run_oracle(lr, seed, B_TENSEAL)
@@ -129,7 +129,7 @@ def main() -> int:
         })
 
     # --- Experiment 2: Chebyshev matched (paper 0.68x) ---
-    print(f"\n[2/6] Chebyshev d=10 matched (paper: 0.68×, 0/10 wins)")
+    print("\n[2/6] Chebyshev d=10 matched (paper: 0.68×, 0/10 wins)")
     for seed in SEEDS:
         t0 = time.perf_counter()
         ores = run_oracle(ch, seed, B_TENSEAL)
@@ -144,7 +144,7 @@ def main() -> int:
         })
 
     # --- Experiment 3: Chebyshev + A1 warm-start ---
-    print(f"\n[3/6] Chebyshev d=10 + A1 warm-start ρ=0.3 (mock: 8/10 wins)")
+    print("\n[3/6] Chebyshev d=10 + A1 warm-start ρ=0.3 (mock: 8/10 wins)")
     for seed in SEEDS:
         t0 = time.perf_counter()
         ores = run_oracle(ch, seed, B_TENSEAL, random_floor=0.3)
@@ -159,7 +159,7 @@ def main() -> int:
         })
 
     # --- Experiment 4: WDBC matched ---
-    print(f"\n[4/6] WDBC d=30 matched (paper: 1.14× median, 5/10 wins)")
+    print("\n[4/6] WDBC d=30 matched (paper: 1.14× median, 5/10 wins)")
     for seed in SEEDS:
         t0 = time.perf_counter()
         ores = run_oracle(wdbc, seed, B_TENSEAL)
@@ -174,7 +174,7 @@ def main() -> int:
         })
 
     # --- Experiment 5: WDBC asymmetric ---
-    print(f"\n[5/6] WDBC d=30 asymmetric (paper: 0.25×, 1/10 wins)")
+    print("\n[5/6] WDBC d=30 asymmetric (paper: 0.25×, 1/10 wins)")
     for seed in SEEDS:
         t0 = time.perf_counter()
         ores = run_oracle(wdbc, seed, B_TENSEAL)
@@ -189,7 +189,7 @@ def main() -> int:
         })
 
     # --- Experiment 6: WDBC hybrid union verdict ---
-    print(f"\n[6/6] WDBC d=30 hybrid union (new)")
+    print("\n[6/6] WDBC d=30 hybrid union (new)")
     for seed in SEEDS:
         t0 = time.perf_counter()
         hres = run_hybrid(

@@ -45,3 +45,15 @@ Issues = "https://github.com/BAder82t/fhe-oracle/issues"
 [tool.setuptools.packages.find]
 include = ["fhe_oracle*"]
 exclude = ["tests*", "benchmarks*", "research*"]
+
+[tool.ruff]
+extend-exclude = ["benchmarks", "research"]
+
+[tool.mypy]
+files = ["fhe_oracle"]
+
+[[tool.mypy.overrides]]
+# Optional native FHE libraries: no stubs upstream, lazily imported inside
+# try/except at call time, and not installed in the default dev/CI env.
+module = ["cma", "seal", "tenseal", "openfhe", "concrete", "concrete.*"]
+ignore_missing_imports = true

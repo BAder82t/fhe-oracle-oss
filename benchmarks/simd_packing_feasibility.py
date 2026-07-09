@@ -43,7 +43,6 @@ sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
 from fhe_oracle.adapters.tenseal_adapter import (
     HAVE_TENSEAL,
     TenSEALContext,
-    make_tenseal_taylor3_fhe_fn,
 )
 
 

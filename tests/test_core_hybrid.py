@@ -7,7 +7,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from fhe_oracle import FHEOracle, OracleResult
+from fhe_oracle import FHEOracle
 from fhe_oracle.guarantees import CoverageCertificate
 
 

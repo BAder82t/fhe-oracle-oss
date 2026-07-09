@@ -5,9 +5,8 @@
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
-from fhe_oracle.hybrid import HybridResult, run_hybrid
+from fhe_oracle.hybrid import run_hybrid
 
 
 def _identity(x):

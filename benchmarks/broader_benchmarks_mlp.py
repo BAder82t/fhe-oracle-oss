@@ -273,7 +273,7 @@ def main() -> int:
     summary_path = os.path.join(out_dir, "broader_benchmarks_mlp_summary.csv")
 
     print("Broader external benchmarks — MLP (Limitation 2b)")
-    print(f"  Compiler  : Concrete-ML (TFHE) NeuralNetClassifier")
+    print("  Compiler  : Concrete-ML (TFHE) NeuralNetClassifier")
     print(f"  Seeds     : {SEEDS}")
     print(f"  Budget    : {BUDGET} per leg")
     print(f"  Threshold : {THRESHOLD}")

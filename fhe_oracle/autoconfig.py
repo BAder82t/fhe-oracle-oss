@@ -197,12 +197,8 @@ class ProbeResult:
 
 def _divergence(plaintext_fn: Callable, fhe_fn: Callable, x: np.ndarray) -> float:
     """Reducer-max absolute divergence |plain(x) - fhe(x)|."""
-    p = plaintext_fn(x)
-    f = fhe_fn(x)
-    if np.isscalar(p) and np.isscalar(f):
-        return float(abs(p - f))
-    p_arr = np.atleast_1d(np.asarray(p, dtype=np.float64)).ravel()
-    f_arr = np.atleast_1d(np.asarray(f, dtype=np.float64)).ravel()
+    p_arr = np.atleast_1d(np.asarray(plaintext_fn(x), dtype=np.float64)).ravel()
+    f_arr = np.atleast_1d(np.asarray(fhe_fn(x), dtype=np.float64)).ravel()
     n = min(p_arr.size, f_arr.size)
     if n == 0:
         return 0.0
@@ -566,7 +562,7 @@ class AutoOracle:
 
             # Merge recommendation into user oracle_kwargs; user wins
             # on any explicit override.
-            kw = {
+            kw: dict[str, Any] = {
                 "sigma0": None,
                 "use_heuristic_seeds": True,
                 "heuristic_k": 10,

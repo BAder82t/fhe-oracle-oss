@@ -132,7 +132,7 @@ def _concrete_fhe_fn(
 ) -> Callable[[list[float]], float]:
     """Wrap a concrete-ml compiled circuit. Real FHE path."""
     try:
-        from concrete.ml.sklearn import LogisticRegression
+        pass
     except Exception:
         return lambda x: plaintext_fn(x)
 

@@ -224,7 +224,7 @@ def main() -> int:
             from fhe_oracle.adapters.tenseal_adapter import TenSEALContext
             ctx = TenSEALContext(seed=42)
             circ = build_tenseal_lr_d8(ctx)
-            print(f"[regime=real_fhe_lr_d8] B=60 seeds=[0,1,2] …")
+            print("[regime=real_fhe_lr_d8] B=60 seeds=[0,1,2] …")
             rows = run_regime("real_fhe_lr_d8", circ, budget=60, seeds=[0, 1, 2])
             all_rows.extend(rows)
             print(f"  median overhead_pct = {_summarise(rows)['median_overhead_pct']:.3%}")
@@ -235,7 +235,7 @@ def main() -> int:
 
     # --- Regime 2: mock pure-Python ---
     circ = build_mock_lr(d=8, sleep_s=0.0)
-    print(f"[regime=mock_lr_d8] B=500 seeds=[0..4] …")
+    print("[regime=mock_lr_d8] B=500 seeds=[0..4] …")
     rows = run_regime("mock_lr_d8", circ, budget=500, seeds=list(range(5)))
     all_rows.extend(rows)
     print(f"  median overhead_pct = {_summarise(rows)['median_overhead_pct']:.3%}")

@@ -44,7 +44,6 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from adapters.base import FHEAdapter
 from fitness import FitnessFn
 from noise_model import NoiseAmplificationModel
-from search import AdversarialSearcher
 
 # ---------------------------------------------------------------------------
 # Circuit parameters
@@ -428,7 +427,7 @@ def main(seed: int | None = 42, input_range: float = 2.0) -> None:
         ratio = cma_max_div / rand_max_div
         print(f"  Max-error ratio:   {ratio:>8.1f}x  (patent target: ~3008x; range 500-15000x)")
     else:
-        print(f"  Random max div:    0.000000e+00  (no divergence found by random)")
+        print("  Random max div:    0.000000e+00  (no divergence found by random)")
         if cma_max_div > 0:
             print(f"  CMA-ES max div:    {cma_max_div:.6e}  (ratio: inf, random found nothing)")
 

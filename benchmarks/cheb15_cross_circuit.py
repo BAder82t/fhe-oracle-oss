@@ -115,7 +115,7 @@ def decompose_error(x, w, b, approx, fhe_fn):
 
 def run_wdbc_cheb15() -> list[dict]:
     print("=" * 80)
-    print(f"Cheb-15 cross-circuit on WDBC d=30")
+    print("Cheb-15 cross-circuit on WDBC d=30")
     print("=" * 80)
     w, b, _ = _fit_wdbc_model()
     d = int(w.shape[0])

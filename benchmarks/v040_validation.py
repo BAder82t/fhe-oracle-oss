@@ -22,7 +22,7 @@ import csv
 import os
 import sys
 import time
-from typing import Any, Callable
+from typing import Any
 
 import numpy as np
 

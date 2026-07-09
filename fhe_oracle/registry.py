@@ -63,13 +63,15 @@ def _load_entry_points(kind: str) -> None:
         except TypeError:
             # Python < 3.10 fallback: entry_points() returns a plain
             # dict there (no `group` kwarg support), and `EntryPoints`
-            # itself was only added to importlib.metadata in 3.10 --
-            # so the default must be a plain empty list, not an
-            # EntryPoints() instance. Current typeshed (reflecting the
-            # Python this is type-checked under) models the no-arg
-            # return as EntryPoints and complains about the mismatched
-            # default; this branch never runs under that Python version.
-            eps = importlib.metadata.entry_points().get(group, [])  # type: ignore[attr-defined]
+            # itself was only added to importlib.metadata in 3.10, so
+            # the default must be a plain empty list. Typeshed's model
+            # of the no-arg return's .get() (and the exact error code
+            # it produces for the mismatched default) varies across
+            # the Python version being type-checked under -- routing
+            # through an explicit Any sidesteps that instability
+            # instead of chasing a moving error code.
+            all_eps: Any = importlib.metadata.entry_points()
+            eps = all_eps.get(group, [])
         for ep in eps:
             try:
                 obj = ep.load()

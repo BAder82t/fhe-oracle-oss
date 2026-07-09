@@ -42,6 +42,25 @@ def test_additivity_fitness_swallows_exceptions():
     assert fitness.score([0.0, 0.0, 0.0, 0.0]) == 0.0
 
 
+def test_additivity_fitness_handles_vector_output():
+    # additive vector-valued fn: elementwise sum-doubling.
+    def vector_fn(x):
+        arr = np.asarray(x)
+        return [float(arr[0] * 2), float(arr[1] * 2)]
+
+    fitness = AdditivityFitness(vector_fn, dim=2)
+    a = [1.0, 2.0]
+    b = [3.0, 4.0]
+    assert fitness.score(a + b) == pytest.approx(0.0, abs=1e-9)
+
+    def non_additive_vector_fn(x):
+        arr = np.asarray(x)
+        return [float(arr[0] * 2) + 1.0, float(arr[1] * 2)]
+
+    fitness2 = AdditivityFitness(non_additive_vector_fn, dim=2)
+    assert fitness2.score(a + b) == pytest.approx(1.0, abs=1e-9)
+
+
 def test_oracle_search_finds_additivity_violation():
     fitness = AdditivityFitness(_non_additive_fn, dim=2)
     oracle = FHEOracle(

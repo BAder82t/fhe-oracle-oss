@@ -86,6 +86,35 @@ def test_shrink_uniformly_failing_landscape_collapses_to_reference():
     assert shrunk.shrunk_input == pytest.approx([0.0, 0.0], abs=1e-3)
 
 
+def test_shrink_unconstrained_defaults_reference_to_zeros():
+    # no input_bounds -> reference defaults to zeros, not a box midpoint.
+    oracle = FHEOracle(
+        plaintext_fn=lambda x: 0.0,
+        fhe_fn=lambda x: 999.0,
+        input_dim=2,
+        seed=0,
+    )
+    manual_result = OracleResult(
+        verdict="FAIL",
+        max_error=999.0,
+        worst_input=[3.0, -2.0],
+        threshold=1e-3,
+        n_trials=0,
+        elapsed_seconds=0.0,
+    )
+    shrunk = oracle.shrink(manual_result, max_evals=100)
+    assert shrunk.shrunk_input == pytest.approx([0.0, 0.0], abs=1e-3)
+
+
+def test_shrink_is_reproducible_for_same_seed():
+    oracle_a, result_a = _make_fail_oracle(dim=6, seed=5)
+    oracle_b, result_b = _make_fail_oracle(dim=6, seed=5)
+    shrunk_a = oracle_a.shrink(result_a, max_evals=150)
+    shrunk_b = oracle_b.shrink(result_b, max_evals=150)
+    assert shrunk_a.shrunk_input == shrunk_b.shrunk_input
+    assert shrunk_a.n_evals == shrunk_b.n_evals
+
+
 def test_shrink_witness_already_at_reference_is_noop():
     oracle = FHEOracle(
         plaintext_fn=lambda x: 0.0,

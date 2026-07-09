@@ -49,6 +49,16 @@ def test_to_markdown_diagnostics_suppressed_on_pass():
     assert "## Diagnostics" not in md
 
 
+def test_to_markdown_empty_diagnostics_dict_is_treated_as_absent():
+    md = to_markdown(_make_result("FAIL"), diagnostics={})
+    assert "## Diagnostics" not in md
+
+
+def test_to_json_empty_diagnostics_dict_is_treated_as_absent():
+    payload = json.loads(to_json(_make_result("FAIL"), diagnostics={}))
+    assert "diagnostics" not in payload
+
+
 def test_to_json_without_diagnostics():
     payload = json.loads(to_json(_make_result()))
     assert "diagnostics" not in payload

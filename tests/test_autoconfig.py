@@ -318,6 +318,40 @@ def test_auto_oracle_low_rank_structure_dispatch():
     assert result.regime == Regime.LOW_RANK_STRUCTURE.value
 
 
+def test_auto_oracle_low_rank_structure_respects_user_separable_override(monkeypatch):
+    """User explicitly passing separable=False wins over the
+    LOW_RANK_STRUCTURE regime's default separable=True."""
+    import fhe_oracle.core as core_module
+
+    rng = np.random.default_rng(3)
+    d, true_rank = 20, 2
+    W = rng.standard_normal((true_rank, d))
+
+    def fhe_fn(x):
+        z = W @ np.asarray(x)
+        return 0.01 * float(np.sum(np.sin(z)))
+
+    captured = {}
+    real_init = core_module.FHEOracle.__init__
+
+    def spy_init(self, *args, **kwargs):
+        captured.update(kwargs)
+        return real_init(self, *args, **kwargs)
+
+    monkeypatch.setattr(core_module.FHEOracle, "__init__", spy_init)
+
+    oracle = AutoOracle(
+        plaintext_fn=lambda x: 0.0,
+        fhe_fn=fhe_fn,
+        bounds=[(-1.0, 1.0)] * d,
+        n_probes=30,
+        separable=False,  # explicit user override
+    )
+    result = oracle.run(n_trials=150, seed=2)
+    assert result.regime == Regime.LOW_RANK_STRUCTURE.value
+    assert captured["separable"] is False
+
+
 def test_auto_oracle_plateau_dispatch():
     """A plateau-then-cliff landscape dispatches to warm_start."""
     rng_state = {"i": 0}

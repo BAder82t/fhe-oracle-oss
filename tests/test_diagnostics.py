@@ -208,6 +208,20 @@ def test_localize_fault_custom_threshold():
     assert step.name == "op_2"
 
 
+def test_localize_fault_zero_threshold_returns_first_step():
+    # threshold=0 -> every non-negative step_error "crosses" it, so the
+    # FIRST step wins regardless of magnitude.
+    trace = _make_trace([0.0, 0.001, 0.5], total_divergence=0.5)
+    step = localize_fault(trace, threshold=0.0)
+    assert step.name == "op_0"
+
+
+def test_localize_fault_tie_breaks_to_first_occurrence():
+    trace = _make_trace([0.3, 0.3, 0.1], total_divergence=0.3)
+    step = localize_fault(trace, threshold=1.0)  # forces fallback path
+    assert step.name == "op_0"  # max() with ties returns the first max
+
+
 def test_localize_fault_raises_on_empty_operations():
     trace = OperationTrace(
         input_x=np.array([0.0]),
@@ -266,6 +280,22 @@ def test_characterize_structure_validates_bounds_length():
 def test_characterize_structure_validates_dim_positive():
     with pytest.raises(ValueError):
         characterize_structure(lambda x: 0.0, dim=0, bounds=[])
+
+
+def test_characterize_structure_validates_n_samples():
+    with pytest.raises(ValueError):
+        characterize_structure(
+            lambda x: 0.0, dim=3, bounds=[(-1.0, 1.0)] * 3, n_samples=1
+        )
+
+
+def test_characterize_structure_constant_fn_is_inconclusive():
+    report = characterize_structure(
+        lambda x: 42.0, dim=5, bounds=[(-1.0, 1.0)] * 5, n_samples=20, seed=0
+    )
+    assert report.effective_rank == 0
+    assert report.variance_explained == []
+    assert "inconclusive" in report.recommendation
 
 
 class _FakeScalarAdapter(FHEAdapter):
@@ -355,6 +385,13 @@ def test_tracing_circuit_localizes_injected_fault():
     assert isinstance(op_trace, OperationTrace)
     fault = localize_fault(op_trace)
     assert fault.name == "square"
+
+
+def test_tracing_circuit_empty_steps_passes_through_unchanged():
+    adapter = _FakeScalarAdapter()
+    circuit = TracingCircuit(adapter=adapter, steps=[], plaintext_steps=[])
+    assert circuit.trace([3.0]) == []
+    assert circuit([3.0]) == pytest.approx(3.0)
 
 
 def test_tracing_circuit_rejects_mismatched_step_lengths():

@@ -406,3 +406,189 @@ class TracingTenSEALFn:
                 )
             )
         return steps
+
+
+def localize_fault(
+    trace: OperationTrace, threshold: Optional[float] = None
+) -> OperationStep:
+    """Return the operation step most likely responsible for the divergence.
+
+    Reads the real, decrypted per-step values already captured by
+    ``per_op_trace``/``.trace()`` -- the first step whose ``step_error``
+    exceeds ``threshold`` (default: 10% of ``total_divergence``). This
+    is ground truth from actual intermediate decryptions, not
+    perturbation-based inference: a perturbation-based localizer was
+    measured statistically indistinguishable from "blame the operation
+    nearest the output" on real CKKS circuits, whereas reading the
+    already-decrypted per-step error directly needs no inference at all.
+
+    If no step crosses ``threshold`` (error is spread evenly across the
+    trace, or the trace is a degenerate single-step trace), falls back
+    to the step with the single largest ``step_error``.
+
+    Raises
+    ------
+    ValueError
+        If ``trace.operations`` is empty.
+    """
+    if not trace.operations:
+        raise ValueError("trace.operations is empty; nothing to localize")
+
+    cutoff = (
+        threshold if threshold is not None else 0.1 * trace.total_divergence
+    )
+    for op in trace.operations:
+        if op.step_error >= cutoff:
+            return op
+
+    return max(trace.operations, key=lambda op: op.step_error)
+
+
+# ---------------------------------------------------------------------------
+# D: Circuit structure diagnostic
+#
+# Pre-flight tool, not a search improvement. A round of research
+# (2026-07-09) found that search-algorithm changes targeting low-rank
+# structure (e.g. a restricted-covariance CMA-ES) can show a dramatic
+# effect on a synthetic function with EXACTLY known low-rank structure,
+# then show no effect (or worse) on real fhe-oracle circuits whose actual
+# structure is unknown. This diagnostic answers the precondition question
+# -- does this target function actually have exploitable low-rank
+# structure -- BEFORE anyone reaches for separable=True, a SubspaceOracle
+# subspace_dim, or a rank-restricted search strategy.
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class StructureReport:
+    """Result of :func:`characterize_structure`.
+
+    Attributes
+    ----------
+    dim : int
+        Input dimensionality probed.
+    effective_rank : int
+        Smallest number of singular directions whose cumulative
+        variance-explained crosses ``variance_threshold``.
+    variance_explained : list[float]
+        Cumulative variance explained, sorted ascending by number of
+        components included (length = number of singular values
+        computed, <= dim).
+    recommendation : str
+        Plain-English guidance.
+    """
+
+    dim: int
+    effective_rank: int
+    variance_explained: list[float]
+    recommendation: str
+
+
+def characterize_structure(
+    fn: Callable,
+    dim: int,
+    bounds: list[tuple[float, float]],
+    n_samples: int = 200,
+    variance_threshold: float = 0.95,
+    seed: Optional[int] = None,
+) -> StructureReport:
+    """One-shot diagnostic: does ``fn`` have low-rank/separable structure?
+
+    Samples ``n_samples`` random points in ``bounds``, estimates the
+    local gradient of ``fn`` at each via central finite differences,
+    stacks the gradients into a Jacobian-sample matrix, and runs SVD.
+    ``effective_rank`` is the smallest number of singular directions
+    whose cumulative variance-explained crosses ``variance_threshold``.
+
+    Use this BEFORE choosing ``separable=True`` or a
+    :class:`~fhe_oracle.subspace.SubspaceOracle` ``subspace_dim`` -- it
+    measures whether the assumption those options make (this function
+    has exploitable low-rank structure) actually holds for your
+    circuit, instead of assuming it.
+
+    Parameters
+    ----------
+    fn : callable
+        ``fn(x: list[float]) -> float`` (or array; only the first
+        output element is used). Typically the ``plaintext_fn`` under
+        test.
+    dim : int
+        Input dimensionality.
+    bounds : list[tuple[float, float]]
+        Per-dimension ``(low, high)`` sampling box.
+    n_samples : int
+        Number of random points to probe. Default 200.
+    variance_threshold : float
+        Cumulative-variance cutoff defining ``effective_rank``.
+        Default 0.95.
+    seed : int, optional
+        Random seed for reproducibility.
+    """
+    if dim <= 0:
+        raise ValueError("dim must be a positive integer")
+    if len(bounds) != dim:
+        raise ValueError("len(bounds) must equal dim")
+    if n_samples < 2:
+        raise ValueError("n_samples must be >= 2")
+
+    rng = np.random.default_rng(seed)
+    lows = np.array([lo for lo, _ in bounds])
+    highs = np.array([hi for _, hi in bounds])
+    spans = highs - lows
+    eps = np.maximum(1e-6, spans * 1e-4)
+
+    gradients = np.zeros((n_samples, dim))
+    for s in range(n_samples):
+        x = rng.uniform(lows, highs)
+        for i in range(dim):
+            step = eps[i]
+            x_plus = x.copy()
+            x_minus = x.copy()
+            x_plus[i] = min(x[i] + step, highs[i])
+            x_minus[i] = max(x[i] - step, lows[i])
+            denom = x_plus[i] - x_minus[i]
+            if denom <= 0:
+                gradients[s, i] = 0.0
+                continue
+            f_plus = _output_to_scalar(fn(x_plus.tolist()))
+            f_minus = _output_to_scalar(fn(x_minus.tolist()))
+            gradients[s, i] = (f_plus - f_minus) / denom
+
+    # Center before SVD so the result reflects directional variance,
+    # not the mean gradient offset.
+    centered = gradients - gradients.mean(axis=0, keepdims=True)
+    _, singular_values, _ = np.linalg.svd(centered, full_matrices=False)
+    sq = singular_values**2
+    total = float(sq.sum())
+    if total <= 0.0:
+        return StructureReport(
+            dim=dim,
+            effective_rank=0,
+            variance_explained=[],
+            recommendation=(
+                "fn appears constant or non-responsive over the probed "
+                "region -- structure diagnostic inconclusive."
+            ),
+        )
+    cumulative = np.cumsum(sq) / total
+    effective_rank = int(np.searchsorted(cumulative, variance_threshold) + 1)
+    effective_rank = min(effective_rank, dim)
+
+    if effective_rank < dim:
+        recommendation = (
+            f"effective_rank={effective_rank} of dim={dim} explains "
+            f">={variance_threshold * 100:.0f}% variance -- separable=True "
+            f"or a rank-restricted search is likely to help."
+        )
+    else:
+        recommendation = (
+            f"effective_rank={effective_rank} of dim={dim} -- no exploitable "
+            f"low-rank structure detected; full-rank search recommended."
+        )
+
+    return StructureReport(
+        dim=dim,
+        effective_rank=effective_rank,
+        variance_explained=cumulative.tolist(),
+        recommendation=recommendation,
+    )

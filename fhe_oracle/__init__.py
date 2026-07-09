@@ -21,13 +21,16 @@ Public API
 from .adaptive import AdaptiveBudget, AdaptiveConfig
 from .autoconfig import AutoOracle, ProbeResult, Regime, classify_landscape
 from .cascade import CascadeResult, CascadeSearch, evaluate_correlation
-from .core import FHEOracle, OracleResult
+from .core import FHEOracle, OracleResult, ShrinkResult
 from .diagnostics import (
     ComponentLog,
     InstrumentedFitness,
     OperationStep,
     OperationTrace,
+    StructureReport,
     TracingTenSEALFn,
+    characterize_structure,
+    localize_fault,
     per_op_trace,
 )
 from .diversity import DiversityInjector, InjectionStrategy
@@ -64,11 +67,15 @@ __all__ = [
     "PreactivationResult",
     "ProbeResult",
     "Regime",
+    "ShrinkResult",
+    "StructureReport",
     "SubspaceOracle",
     "TracingTenSEALFn",
+    "characterize_structure",
     "classify_landscape",
     "confidence_adjusted_pass",
     "evaluate_correlation",
+    "localize_fault",
     "per_op_trace",
     "run_hybrid",
 ]

@@ -10,7 +10,15 @@ import sys
 import numpy as np
 import pytest
 
-from fhe_oracle.diagnostics import ComponentLog, InstrumentedFitness
+from fhe_oracle.diagnostics import (
+    ComponentLog,
+    InstrumentedFitness,
+    OperationStep,
+    OperationTrace,
+    StructureReport,
+    characterize_structure,
+    localize_fault,
+)
 
 _ANALYSIS_DIR = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..", "benchmarks", "analysis")
@@ -155,3 +163,103 @@ def test_pettitt_test_stationary_noise_rejects_change_point():
     x = rng.normal(0.0, 1.0, size=500)
     _, p = pettitt_test(x)
     assert p > 0.05
+
+
+def _make_step(name, step_error):
+    return OperationStep(
+        name=name,
+        plaintext_value=0.0,
+        fhe_value=step_error,
+        step_error=step_error,
+        cumulative_error=step_error,
+    )
+
+
+def _make_trace(step_errors, total_divergence=None):
+    ops = [_make_step(f"op_{i}", e) for i, e in enumerate(step_errors)]
+    total = total_divergence if total_divergence is not None else max(step_errors)
+    return OperationTrace(
+        input_x=np.array([0.0]),
+        total_divergence=total,
+        plaintext_output=0.0,
+        fhe_output=total,
+        operations=ops,
+    )
+
+
+def test_localize_fault_returns_first_step_crossing_threshold():
+    trace = _make_trace([0.001, 0.002, 0.5, 0.001], total_divergence=0.5)
+    step = localize_fault(trace)
+    assert step.name == "op_2"
+
+
+def test_localize_fault_falls_back_to_largest_step_error():
+    trace = _make_trace([0.01, 0.012, 0.011, 0.009])
+    step = localize_fault(trace, threshold=1.0)
+    assert step.name == "op_1"  # largest step_error (0.012)
+
+
+def test_localize_fault_custom_threshold():
+    trace = _make_trace([0.1, 0.2, 0.9], total_divergence=0.9)
+    step = localize_fault(trace, threshold=0.5)
+    assert step.name == "op_2"
+
+
+def test_localize_fault_raises_on_empty_operations():
+    trace = OperationTrace(
+        input_x=np.array([0.0]),
+        total_divergence=0.0,
+        plaintext_output=0.0,
+        fhe_output=0.0,
+        operations=[],
+    )
+    with pytest.raises(ValueError):
+        localize_fault(trace)
+
+
+def test_characterize_structure_detects_low_rank_ridge_function():
+    rng = np.random.default_rng(0)
+    dim = 20
+    true_rank = 3
+    weights = rng.standard_normal((true_rank, dim))
+
+    def ridge_fn(x):
+        z = weights @ np.asarray(x)
+        return float(np.sum(np.sin(z)))
+
+    bounds = [(-1.0, 1.0)] * dim
+    report = characterize_structure(ridge_fn, dim, bounds, n_samples=150, seed=1)
+    assert isinstance(report, StructureReport)
+    assert report.dim == dim
+    assert report.effective_rank <= true_rank + 2
+    assert report.effective_rank < dim
+
+
+def test_characterize_structure_full_rank_function_reports_high_rank():
+    # Independent per-coordinate nonlinearity with SIMILAR per-coordinate
+    # gradient magnitude (coeffs close to 1.0) -- unlike a widely-scaled
+    # separable function, this has no small subset of dimensions that
+    # dominate variance, so effective_rank should approach dim.
+    dim = 10
+    rng = np.random.default_rng(2)
+    coeffs = rng.uniform(0.8, 1.2, size=dim)
+
+    def full_rank_fn(x):
+        arr = np.asarray(x)
+        return float(np.sum(np.sin(coeffs * arr * 3.0)))
+
+    bounds = [(-1.0, 1.0)] * dim
+    report = characterize_structure(
+        full_rank_fn, dim, bounds, n_samples=150, seed=2
+    )
+    assert report.effective_rank >= dim - 2
+
+
+def test_characterize_structure_validates_bounds_length():
+    with pytest.raises(ValueError):
+        characterize_structure(lambda x: 0.0, dim=3, bounds=[(-1.0, 1.0)] * 2)
+
+
+def test_characterize_structure_validates_dim_positive():
+    with pytest.raises(ValueError):
+        characterize_structure(lambda x: 0.0, dim=0, bounds=[])

@@ -160,6 +160,23 @@ jobs:
 
 Full template: [examples/github_action.yml](./examples/github_action.yml).
 
+## Features (v0.6)
+
+- **Witness shrinking** — `FHEOracle.shrink(result)` reduces a FAIL
+  witness toward a reference point (default: box centre) via
+  per-coordinate binary search, while divergence keeps meeting the
+  original threshold. Returns a `ShrinkResult` with the minimised
+  input and the shrink ratio achieved.
+- **Fault localization** — `localize_fault(trace)` reads a
+  `per_op_trace()` result and returns the `OperationStep` most likely
+  responsible for the divergence, using the already-decrypted
+  per-step values (no perturbation/guessing required).
+- **Circuit structure diagnostic** — `characterize_structure(fn, dim,
+  bounds)` estimates whether a target function has exploitable
+  low-rank structure before you reach for `separable=True` or a
+  `SubspaceOracle` `subspace_dim`. Returns a `StructureReport` with an
+  `effective_rank` estimate and a plain-English recommendation.
+
 ## Features (v0.5)
 
 - **Cross-library benchmark harness** — `benchmarks/library_comparison.py`

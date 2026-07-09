@@ -24,8 +24,22 @@ Why this matters
 At d=128 the published full-d CMA-ES advantage over uniform random is
 ~1.16x at budget B=2000. At d=784 the same approach would need
 B=50d=39200 evaluations and thousands of CKKS calls per seed —
-infeasible in this paper's compute envelope. Searching in 1-D
-preactivation space at B=50 recovers the same advantage in seconds.
+infeasible in this paper's compute envelope. Searching in k-D
+preactivation space at B=50 recovers (and on real CKKS Taylor-3
+sigmoid, exceeds) that advantage in seconds.
+
+Regime of validity
+------------------
+This reduction is exact only when the FHE divergence
+delta(x) = |plain(x) - fhe(x)| factors through z. For polynomial
+sigmoid approximations (Taylor, Chebyshev) the divergence is a pure
+function of z, so the factorisation holds. For circuits whose noise
+depends on input magnitude or other features of x not captured by z,
+the pseudoinverse projection returns the min-norm preimage and may
+miss the worst-case input — see the d=128 LR mock benchmark, where
+preactivation search finds ~100x LESS divergence than uniform random.
+That negative result is a boundary, not a refutation: it shows that
+the technique requires z-factorising divergence.
 
 Usage
 -----

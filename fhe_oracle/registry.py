@@ -61,14 +61,15 @@ def _load_entry_points(kind: str) -> None:
         try:
             eps = importlib.metadata.entry_points(group=group)
         except TypeError:
-            # Python < 3.10 fallback: entry_points() returns a dict-like
-            # SelectableGroups there, but current typeshed (reflecting
-            # the Python this is type-checked under) models the no-arg
-            # return as EntryPoints, which has no .get(). This branch
-            # never runs under the Python version being type-checked.
-            eps = importlib.metadata.entry_points().get(  # type: ignore[attr-defined]
-                group, importlib.metadata.EntryPoints()
-            )
+            # Python < 3.10 fallback: entry_points() returns a plain
+            # dict there (no `group` kwarg support), and `EntryPoints`
+            # itself was only added to importlib.metadata in 3.10 --
+            # so the default must be a plain empty list, not an
+            # EntryPoints() instance. Current typeshed (reflecting the
+            # Python this is type-checked under) models the no-arg
+            # return as EntryPoints and complains about the mismatched
+            # default; this branch never runs under that Python version.
+            eps = importlib.metadata.entry_points().get(group, [])  # type: ignore[attr-defined]
         for ep in eps:
             try:
                 obj = ep.load()

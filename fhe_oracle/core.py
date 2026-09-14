@@ -129,12 +129,14 @@ class ShrinkResult:
     original_norm, shrunk_norm : float
         Euclidean distance from the reference point for each input.
     max_error : float
-        Divergence measured at ``shrunk_input``.
+        Divergence re-measured at ``shrunk_input``. Always meets
+        ``threshold``: shrink retreats toward the original witness when a
+        noisy re-measurement does not.
     threshold : float
         The PASS/FAIL threshold ``shrunk_input`` was constrained to
         keep meeting (copied from the source ``OracleResult``).
     n_evals : int
-        Fitness evaluations spent shrinking.
+        Evaluations spent shrinking, including final verification.
     """
 
     original_input: list[float]
@@ -746,7 +748,9 @@ class FHEOracle:
         Per-coordinate binary search, keeping ``fitness.score(x) >=
         threshold`` at every step. Beat a constrained-CMA-ES
         re-optimisation pass 10/10 seeds in testing -- no fancier
-        search needed here.
+        search needed here. The final point is re-measured as ``run()``
+        measures its verdict; on noisy backends it may retreat toward
+        the original witness.
 
         Parameters
         ----------
@@ -758,7 +762,8 @@ class FHEOracle:
             The point to shrink toward. Defaults to the midpoint of
             ``input_bounds`` (or zeros if unconstrained).
         max_evals : int
-            Fitness-evaluation budget for the whole shrink pass.
+            Evaluation budget for the whole shrink pass, including
+            verification. Must be positive.
 
         Returns
         -------
@@ -769,6 +774,9 @@ class FHEOracle:
                 "shrink() requires a FAIL result (a witness that meets "
                 "the threshold); nothing to shrink for a PASS result."
             )
+
+        if max_evals < 1:
+            raise ValueError("max_evals must be positive")
 
         x = np.array(result.worst_input, dtype=np.float64)
         dim = x.size
@@ -800,16 +808,18 @@ class FHEOracle:
         else:
             order = np.arange(dim)
 
-        per_coord_budget = max(1, max_evals // max(int(dim), 1))
+        # Reserve evaluations to re-confirm the final witness.
+        search_budget = max_evals - min(10, max(1, max_evals // 10))
+        per_coord_budget = max(1, search_budget // max(int(dim), 1))
 
         for i in order:
-            if n_evals >= max_evals:
+            if n_evals >= search_budget:
                 break
             lo_f, hi_f = 0.0, 1.0
             best_f = 0.0
             candidate = x.copy()
             for _ in range(per_coord_budget):
-                if n_evals >= max_evals:
+                if n_evals >= search_budget:
                     break
                 mid_f = (lo_f + hi_f) / 2.0
                 candidate[i] = x[i] + mid_f * (ref[i] - x[i])
@@ -822,8 +832,23 @@ class FHEOracle:
                     break
             x[i] = x[i] + best_f * (ref[i] - x[i])
 
-        final_score = self._score(x.tolist())
-        max_error, _ = self._measure_divergence(x.tolist(), final_score)
+        def _measured(candidate: np.ndarray) -> float:
+            nonlocal n_evals
+            n_evals += 1
+            xs = candidate.tolist()
+            no_model = self._adapter is None and self._fhe_fn is None
+            fallback = self._score(xs) if no_model else 0.0
+            return self._measure_divergence(xs, fallback)[0]
+
+        # A boundary point accepted on one noisy evaluation can re-measure
+        # below threshold; retreat toward the original witness until it fails.
+        max_error = _measured(x)
+        while max_error < threshold and n_evals < max_evals:
+            x = x + 0.5 * (original - x)
+            max_error = _measured(x)
+        if max_error < threshold:
+            x = original.copy()
+            max_error = float(result.max_error)
 
         return ShrinkResult(
             original_input=original.tolist(),

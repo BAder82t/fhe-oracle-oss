@@ -115,6 +115,26 @@ def test_shrink_is_reproducible_for_same_seed():
     assert shrunk_a.n_evals == shrunk_b.n_evals
 
 
+@pytest.mark.parametrize("seed", range(10))
+def test_shrink_result_still_fails_on_noisy_backend(seed):
+    # Boundary points accepted on one noisy evaluation can re-measure below
+    # threshold; the returned witness must still meet it.
+    rng = np.random.default_rng(seed)
+    oracle = FHEOracle(
+        plaintext_fn=lambda x: 0.0,
+        fhe_fn=lambda x: 0.01 * _square(x) + rng.normal(0.0, 2e-4),
+        input_dim=3,
+        input_bounds=[(-2.0, 2.0)] * 3,
+        seed=seed,
+    )
+    result = oracle.run(n_trials=100, threshold=0.01)
+    assert result.verdict == "FAIL"
+    shrunk = oracle.shrink(result, max_evals=120)
+    assert shrunk.max_error >= result.threshold
+    assert shrunk.shrunk_norm <= shrunk.original_norm
+    assert shrunk.n_evals <= 120
+
+
 def test_shrink_witness_already_at_reference_is_noop():
     oracle = FHEOracle(
         plaintext_fn=lambda x: 0.0,

@@ -40,6 +40,9 @@ class TenSEALContext:
 
     Taylor-3 (degree 3) consumes 2 ciphertext-ciphertext multiplies
     (z², z³) plus scalar multiplies — fits comfortably.
+
+    ``seed`` is recorded only; CKKS encryption randomness is not seeded,
+    so decrypted outputs vary slightly between runs.
     """
 
     def __init__(self, seed: int = 42) -> None:

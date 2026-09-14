@@ -7,7 +7,7 @@ search) against random sampling in the same evaluation budget.
 
 ```bash
 pip install cma numpy
-python benchmarks/sigmoid_defect_benchmark.py   # headline 4,259x ratio
+python benchmarks/sigmoid_defect_benchmark.py   # synthetic reference (asymmetric domains)
 python benchmarks/logistic_regression.py
 python benchmarks/polynomial_eval.py
 python benchmarks/neural_layer.py
@@ -38,12 +38,19 @@ and uses the real FHE path. Otherwise it falls back to the mock.
 
 ## Expected result
 
-On `sigmoid_defect_benchmark.py` (seed 42) the oracle finds
-**4,259× larger divergence** than random sampling — the headline
-figure from the patent evaluation. The smaller "mock CKKS" and
-polynomial circuits shown in the top-level README produce more
-modest 1–3× ratios; they exercise different noise regimes and serve
-as faster sanity checks.
+`sigmoid_defect_benchmark.py` is an illustration, not a matched
+comparison: random sampling uses the operational range `[-0.3, 0.3]^5`
+while the oracle searches `[-5, 5]^5`. Its large error ratio (about
+4,259× at seed 42) reflects both the wider domain and the search
+method, so it is not a speedup or evidence of algorithmic superiority.
+The mock circuits exercise different noise regimes and serve as fast
+sanity checks.
+
+Matched real-CKKS results (TenSEAL, same domain and budget for both
+methods, 20 seeds) are in
+[`results/n20_expansion_summary.csv`](results/n20_expansion_summary.csv).
+The oracle finds larger errors on some circuits (logistic regression,
+depth-4 polynomial) and smaller ones on others (Chebyshev).
 
 Swap the simulated adapter for a real compiled FHE circuit to
 benchmark your own backend.

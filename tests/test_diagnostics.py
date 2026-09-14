@@ -8,6 +8,8 @@ import os
 import sys
 
 import numpy as np
+
+from fhe_oracle import EvaluationError
 import pytest
 
 from fhe_oracle.adapters.base import FHEAdapter
@@ -110,11 +112,9 @@ def test_instrumented_fitness_handles_plaintext_exception():
         return 0.0
 
     fit = InstrumentedFitness(plain, fhe, dim=2)
-    s = fit.score([1.0, 1.0])
-    ev = fit.log.evaluations[0]
-    assert ev["divergence"] == 0.0
-    assert ev["noise_term"] > 0.0
-    assert s >= 0.0
+    with pytest.raises(EvaluationError, match="boom"):
+        fit.score([1.0, 1.0])
+    assert fit.log.evaluations == []
 
 
 def test_instrumented_fitness_vector_output_uses_max_abs():

@@ -76,10 +76,12 @@ fitness function) spends its budget climbing toward the failure
 region instead, and finds bugs orders of magnitude larger than random
 sampling in the same wall-clock budget.
 
-On the reference logistic-regression benchmark in this repo (a CKKS
-circuit with a polynomial sigmoid approximation defect), the oracle
-finds divergence **4,259× larger** than random sampling at an equal
-500-evaluation budget. Reproduce with:
+The reference logistic-regression example illustrates a polynomial
+approximation defect in a **synthetic CKKS-like circuit**. Random testing
+uses the operational range `[-0.3, 0.3]^5`; the oracle searches
+`[-5, 5]^5`. Its large error ratio reflects both the different domains
+and the search methods, and is not a matched comparison or speedup.
+Reproduce this illustration with:
 
 ```bash
 pip install cma numpy
@@ -88,32 +90,68 @@ python benchmarks/sigmoid_defect_benchmark.py --seed 42
 
 ## How it works
 
-- **CMA-ES search** over the input domain, guided by a noise-aware
-  fitness that combines plaintext/FHE divergence with ciphertext
-  noise-budget consumption and multiplicative-depth utilisation.
-- **Adapters** for OpenFHE, Concrete ML, and TenSEAL turn on
-  noise-guided search. A pure divergence fallback works without any
-  native FHE library — useful for CI.
+- **CMA-ES search** over the input domain, guided by plaintext/FHE
+  output divergence by default, with optional custom fitness plugins.
+- **Adapters** for OpenFHE, Concrete ML, and TenSEAL connect supported
+  circuits to divergence search. Optional plugins can supply additional
+  fitness functions. Synthetic checks can run without native FHE libraries.
 - **Output**: PASS/FAIL verdict, worst input, sensitivity map, and a
   structured JSON/Markdown report for artefact upload.
 
 ## Benchmarks
 
 See [benchmarks/](./benchmarks/README.md) for reproducible circuits.
-Numbers below are from live runs on this repo (500-evaluation budget,
-deterministic seed 42):
+Historical results below are recorded in
+[the 20-seed summary](benchmarks/results/n20_expansion_summary.csv).
+They are not a fresh validation of v0.6.0. Ratios measure the maximum
+error discovered, not runtime or number of bugs found.
 
-| Circuit                                     | Dim | Random max error | Oracle max error | Ratio       |
-|---------------------------------------------|-----|------------------|------------------|-------------|
-| Logistic regression (reference)             | 5   | 3.5e-4           | 1.50             | **4,259×**  |
-| Logistic regression (input-amplified mock)  | 8   | 2.7e-1           | 6.8e-1           | 2.5×        |
-| Polynomial (depth 4)                        | 6   | 1.7e-2           | 1.9e-2           | 1.1×        |
-| Dense + Chebyshev sigmoid                   | 10  | —                | 1.0e-1           | —           |
+| Real TenSEAL circuit / setting | Seeds | Median oracle/random max-error ratio | Oracle wins |
+|---|---:|---:|---:|
+| LR, matched (`lr_matched`, B=60) | 20 | 2.04× | 15/20 |
+| Depth-4 polynomial, matched | 20 | 1.41× | 16/20 |
+| Chebyshev, matched (`cheb_matched`, B=60) | 20 | 0.38× | 3/20 |
 
-Pure-Python divergence-only benchmarks run in under one second on a
-2020-era laptop. Library-comparison benchmarks (TenSEAL / OpenFHE /
-Pyfhel) take 15–45 s/seed; reach the unified-circuit numbers via
-`benchmarks/library_comparison.py`.
+Results depend on circuit, domain, parameters and strategy. The synthetic
+reference's historical 4,259× ratio compares different domains and is
+excluded from this matched-results table. Approximation error between
+an intended model and its polynomial surrogate must be distinguished
+from the error introduced by encrypted execution of that surrogate.
+
+For a customer evaluation, pin backend versions, use the same input domain
+and tolerance for each method, count all model evaluations, and compare
+both equal evaluation budgets and equal wall-clock budgets across seeds.
+
+## Verdicts and evaluation errors
+
+`PASS` means no threshold violation was observed during the specified
+search; it is not proof of correctness, cryptographic security or
+regulatory compliance. Coverage confidence is conditional on the
+caller-supplied minimum failure-region measure.
+
+Invalid evaluations abort the run instead of producing a PASS. The built-in
+precision comparisons reject backend exceptions, non-finite values, empty
+outputs and mismatched output shapes. Scalars and one-element vectors
+are compatible; higher-dimensional shapes must match. `EvaluationError`
+is exported for callers to catch. Custom fitness implementations must
+propagate backend failures and return finite scores.
+
+The CLI exits **0** for PASS, **1** for a measured precision FAIL and
+**2** for a model, configuration or evaluation error. In CI, treat every
+nonzero exit as a blocked check. Some backend/property callbacks may
+propagate their original exception; they never imply a successful check.
+
+## Supported integrations
+
+Core includes pure divergence search. Noise-budget fitness and named
+heuristic implementations require separately installed plugins; supplying
+an adapter alone does not install them. Broken plugin entry points emit
+warnings and fall back to available Core functionality.
+
+TenSEAL, OpenFHE and Concrete are optional integrations with backend-specific
+requirements. The Lattigo module is a restricted subprocess precision probe,
+not a general Core adapter, and its Go binary must be built separately.
+The package remains Alpha while backend/version validation expands.
 
 ## CI/CD integration
 
@@ -171,7 +209,7 @@ Full template: [examples/github_action.yml](./examples/github_action.yml).
   Python file defining `plaintext_fn`/`fhe_fn`/`input_bounds` at module
   level (optionally `n_trials`/`threshold`/`seed` too, overridable via
   `--n-trials`/`--threshold`/`--seed`/`--format`/`--no-shrink`). Exits
-  0 on PASS, 1 on FAIL, 2 on a malformed model file.
+  0 on PASS, 1 on FAIL, 2 on a model, configuration or evaluation error.
 - **Witness shrinking** — `FHEOracle.shrink(result)` reduces a FAIL
   witness toward a reference point (default: box centre) via
   per-coordinate binary search, while divergence keeps meeting the
@@ -258,8 +296,9 @@ Full template: [examples/github_action.yml](./examples/github_action.yml).
   (when `W, b` are available) or uniform random sampling. See
   `research/release/v030-benchmark-report.md` for the evaluation.
 - **Pure-divergence defaults** — `w_noise` and `w_depth` now
-  default to `0.0` (paper §6.15 empirical evidence); pass
-  `w_noise=0.5, w_depth=0.3` to restore v0.2 shaping behaviour.
+  defaulted to `0.0` in v0.3 (paper §6.15 empirical evidence).
+  Those arguments were removed in v0.5.1; current Core uses divergence
+  fitness and optional plugin providers.
 
 ## Features (v0.2)
 

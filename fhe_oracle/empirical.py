@@ -23,6 +23,8 @@ from typing import Callable, Optional
 
 import numpy as np
 
+from .fitness import finite_score
+
 
 @dataclass(frozen=True)
 class EmpiricalResult:
@@ -100,10 +102,7 @@ class EmpiricalSearch:
             x = self.data[idx].copy()
             if self.jitter_std > 0:
                 x = x + rng.normal(0.0, self.jitter_std, size=d)
-            try:
-                err = float(self.divergence_fn(x))
-            except Exception:
-                err = 0.0
+            err = finite_score(self.divergence_fn(x))
             if err > best_err:
                 best_err = err
                 best_x = x.copy()

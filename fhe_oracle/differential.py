@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-import numpy as np
+from .fitness import DivergenceFitness
 
 from .core import FHEOracle, OracleResult
 
@@ -34,22 +34,8 @@ class CrossAdapterFitness:
         self._b = adapter_b
 
     def score(self, x: list[float]) -> float:
-        """Return max-abs-diff between the two adapters' outputs at x.
-
-        Exceptions from either adapter return 0.0, matching
-        :class:`~fhe_oracle.fitness.DivergenceFitness`'s convention.
-        """
-        try:
-            out_a = self._a.evaluate(x)
-            out_b = self._b.evaluate(x)
-        except Exception:
-            return 0.0
-        a_arr = np.atleast_1d(np.asarray(out_a, dtype=np.float64)).ravel()
-        b_arr = np.atleast_1d(np.asarray(out_b, dtype=np.float64)).ravel()
-        n = min(a_arr.size, b_arr.size)
-        if n == 0:
-            return 0.0
-        return float(np.max(np.abs(a_arr[:n] - b_arr[:n])))
+        """Compare complete outputs; invalid evaluations raise an error."""
+        return DivergenceFitness(self._a.evaluate, self._b.evaluate).score(x)
 
 
 def differential_test(

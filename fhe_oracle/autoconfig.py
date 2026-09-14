@@ -52,6 +52,8 @@ from enum import Enum
 from typing import Any, Callable, Optional
 
 import numpy as np
+
+from .fitness import DivergenceFitness
 from scipy.stats import spearmanr
 
 from .diagnostics import characterize_structure
@@ -205,12 +207,7 @@ class ProbeResult:
 
 def _divergence(plaintext_fn: Callable, fhe_fn: Callable, x: np.ndarray) -> float:
     """Reducer-max absolute divergence |plain(x) - fhe(x)|."""
-    p_arr = np.atleast_1d(np.asarray(plaintext_fn(x), dtype=np.float64)).ravel()
-    f_arr = np.atleast_1d(np.asarray(fhe_fn(x), dtype=np.float64)).ravel()
-    n = min(p_arr.size, f_arr.size)
-    if n == 0:
-        return 0.0
-    return float(np.max(np.abs(p_arr[:n] - f_arr[:n])))
+    return DivergenceFitness(plaintext_fn, fhe_fn).score(x)
 
 
 def classify_landscape(

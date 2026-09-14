@@ -15,6 +15,8 @@ from typing import Any, Callable
 
 import numpy as np
 
+from .fitness import absolute_error, validated_outputs
+
 
 def _to_array(value: Any) -> np.ndarray:
     if isinstance(value, (int, float, np.integer, np.floating)):
@@ -45,17 +47,8 @@ class AdditivityFitness:
     def score(self, x: list[float]) -> float:
         arr = np.asarray(x, dtype=np.float64)
         a, b = arr[: self._dim], arr[self._dim : 2 * self._dim]
-        try:
-            out_sum = _to_array(self._fn((a + b).tolist()))
-            out_a = _to_array(self._fn(a.tolist()))
-            out_b = _to_array(self._fn(b.tolist()))
-        except Exception:
-            return 0.0
-        n = min(out_sum.size, out_a.size, out_b.size)
-        if n == 0:
-            return 0.0
-        diff = np.abs(out_sum[:n] - (out_a[:n] + out_b[:n]))
-        return float(np.max(diff))
+        out_a, out_b = validated_outputs(self._fn(a.tolist()), self._fn(b.tolist()))
+        return float(absolute_error(self._fn((a + b).tolist()), out_a + out_b).max())
 
 
 class ScalarLinearityFitness:
@@ -88,13 +81,7 @@ class ScalarLinearityFitness:
         arr = np.asarray(x, dtype=np.float64)
         x_part = arr[: self._dim]
         c = float(np.clip(arr[self._dim], self._c_lo, self._c_hi))
-        try:
-            out_scaled = _to_array(self._fn((c * x_part).tolist()))
-            out_base = _to_array(self._fn(x_part.tolist()))
-        except Exception:
-            return 0.0
-        n = min(out_scaled.size, out_base.size)
-        if n == 0:
-            return 0.0
-        diff = np.abs(out_scaled[:n] - c * out_base[:n])
+        out_scaled = self._fn((c * x_part).tolist())
+        out_base = _to_array(self._fn(x_part.tolist()))
+        diff = absolute_error(out_scaled, c * out_base)
         return float(np.max(diff))

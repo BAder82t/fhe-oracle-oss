@@ -24,6 +24,8 @@ from typing import Any, Callable, Optional
 
 import numpy as np
 
+from .fitness import DivergenceFitness
+
 from .core import FHEOracle, OracleResult
 from .empirical import EmpiricalResult, EmpiricalSearch
 
@@ -45,17 +47,7 @@ def _default_divergence_fn(
 ) -> Callable[[np.ndarray], float]:
     """Construct δ(x) = |plaintext_fn(x) − fhe_fn(x)| over scalar/vector outputs."""
     def _div(x: np.ndarray) -> float:
-        try:
-            p = plaintext_fn(x.tolist())
-            f = fhe_fn(x.tolist())
-        except Exception:
-            return 0.0
-        p_arr = np.atleast_1d(np.asarray(p, dtype=np.float64)).ravel()
-        f_arr = np.atleast_1d(np.asarray(f, dtype=np.float64)).ravel()
-        n = min(p_arr.size, f_arr.size)
-        if n == 0:
-            return 0.0
-        return float(np.max(np.abs(p_arr[:n] - f_arr[:n])))
+        return DivergenceFitness(plaintext_fn, fhe_fn).score(x.tolist())
     return _div
 
 

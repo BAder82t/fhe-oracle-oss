@@ -42,6 +42,8 @@ from typing import Any, Callable, Iterable, Optional
 
 import numpy as np
 
+from .fitness import DivergenceFitness
+
 from .core import FHEOracle
 from .preactivation import PreactivationOracle
 
@@ -78,14 +80,8 @@ def evaluate_correlation(
     cheap = []
     expensive = []
     for x in samples:
-        try:
-            p = float(_to_scalar(plaintext_fn(x)))
-            c = float(_to_scalar(cheap_fhe_fn(x)))
-            e = float(_to_scalar(expensive_fhe_fn(x)))
-        except Exception:
-            continue
-        cheap.append(abs(p - c))
-        expensive.append(abs(p - e))
+        cheap.append(DivergenceFitness(plaintext_fn, cheap_fhe_fn).score(x))
+        expensive.append(DivergenceFitness(plaintext_fn, expensive_fhe_fn).score(x))
 
     if len(cheap) < 3:
         return {
@@ -159,22 +155,10 @@ class CascadeSearch:
     # --------- Helpers ----------------------------------------------
 
     def _cheap_div(self, x) -> float:
-        try:
-            return abs(
-                float(_to_scalar(self._plain(x)))
-                - float(_to_scalar(self._cheap(x)))
-            )
-        except Exception:
-            return 0.0
+        return DivergenceFitness(self._plain, self._cheap).score(x)
 
     def _expensive_div(self, x) -> float:
-        try:
-            return abs(
-                float(_to_scalar(self._plain(x)))
-                - float(_to_scalar(self._expensive(x)))
-            )
-        except Exception:
-            return 0.0
+        return DivergenceFitness(self._plain, self._expensive).score(x)
 
     # --------- Cheap-stage search drivers ---------------------------
 

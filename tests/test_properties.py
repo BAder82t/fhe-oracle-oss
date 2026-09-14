@@ -34,12 +34,13 @@ def test_additivity_fitness_nonzero_for_non_additive_fn():
     assert fitness.score(a + b) == pytest.approx(1.0, abs=1e-9)
 
 
-def test_additivity_fitness_swallows_exceptions():
+def test_additivity_fitness_propagates_exceptions():
     def raises(x):
         raise RuntimeError("boom")
 
     fitness = AdditivityFitness(raises, dim=2)
-    assert fitness.score([0.0, 0.0, 0.0, 0.0]) == 0.0
+    with pytest.raises(RuntimeError, match="boom"):
+        fitness.score([0.0, 0.0, 0.0, 0.0])
 
 
 def test_additivity_fitness_handles_vector_output():

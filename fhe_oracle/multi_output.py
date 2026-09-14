@@ -39,6 +39,8 @@ from typing import Any, Callable
 
 import numpy as np
 
+from .fitness import evaluate_outputs, absolute_error, finite_score
+
 
 class MultiOutputMode(Enum):
     """Fitness mode for vector-valued outputs."""
@@ -90,22 +92,15 @@ class MultiOutputFitness:
         return self.score(x)
 
     def score(self, x: Any) -> float:
-        """Compute fitness at ``x``. Exceptions return 0.0."""
-        try:
-            p = _to_vector(self.plaintext_fn(x))
-            f = _to_vector(self.fhe_fn(x))
-        except Exception:
-            return 0.0
-        n = min(p.size, f.size)
-        if n == 0:
-            return 0.0
-        p = p[:n]
-        f = f[:n]
+        """Compute fitness; reject failed or incompatible model outputs."""
+        p, f = evaluate_outputs(self.plaintext_fn, self.fhe_fn, x)
+        absolute_error(p, f)
+        p, f = p.ravel(), f.ravel()
         if self.mode == MultiOutputMode.MAX_ABSOLUTE:
             return self._max_absolute(p, f)
         if self.mode == MultiOutputMode.RANK_INVERSION:
             return self._rank_inversion(p, f)
-        return self._combined(p, f)
+        return finite_score(self._combined(p, f))
 
     @staticmethod
     def _max_absolute(p: np.ndarray, f: np.ndarray) -> float:
@@ -143,11 +138,10 @@ class MultiOutputFitness:
 
     def detailed_report(self, x: Any) -> dict:
         """Diagnostic report at a specific input."""
-        p = _to_vector(self.plaintext_fn(x))
-        f = _to_vector(self.fhe_fn(x))
-        n = min(p.size, f.size)
-        p = p[:n]
-        f = f[:n]
+        p, f = evaluate_outputs(self.plaintext_fn, self.fhe_fn, x)
+        absolute_error(p, f)
+        p, f = p.ravel(), f.ravel()
+        n = p.size
         report: dict = {
             "plaintext_output": p.tolist(),
             "fhe_output": f.tolist(),

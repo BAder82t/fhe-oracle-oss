@@ -26,7 +26,9 @@ MODULES: list[str] = [
     "fhe_oracle.diagnostics",
     "fhe_oracle.preactivation",
     "fhe_oracle.cascade",
-    "fhe_oracle.heuristics",
+    "fhe_oracle.registry",
+    "fhe_oracle.check",
+    "fhe_oracle.cli",
     "fhe_oracle.adapters",
     "fhe_oracle.adapters.tenseal_adapter",
 ]
@@ -62,7 +64,11 @@ EXPECTED_PUBLIC: list[str] = [
     "CascadeResult",
     "evaluate_correlation",
     "DivergenceFitness",
-    "NoiseGuidedFitness",
+    "EvaluationError",
+    "check",
+    "CheckResult",
+    "MultiOutputFitness",
+    "differential_test",
 ]
 
 

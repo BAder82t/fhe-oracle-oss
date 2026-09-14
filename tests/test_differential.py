@@ -5,6 +5,9 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
+
+from fhe_oracle import EvaluationError
 
 from fhe_oracle.adapters.base import FHEAdapter
 from fhe_oracle.differential import CrossAdapterFitness, differential_test
@@ -80,19 +83,20 @@ def test_cross_adapter_fitness_direct():
     assert fitness.score([0.0, 0.0]) == 2.0
 
 
-def test_cross_adapter_fitness_truncates_mismatched_output_lengths():
+def test_cross_adapter_fitness_rejects_mismatched_output_lengths():
     a = _FakeAdapter(lambda x: [1.0, 2.0, 3.0])
     b = _FakeAdapter(lambda x: [1.0, 5.0])  # shorter output
     fitness = CrossAdapterFitness(a, b)
-    # only the first min(3, 2) = 2 elements are compared: |1-1|, |2-5| -> 3.0
-    assert fitness.score([0.0]) == 3.0
+    with pytest.raises(EvaluationError, match="shape mismatch"):
+        fitness.score([0.0])
 
 
-def test_cross_adapter_fitness_swallows_exceptions():
+def test_cross_adapter_fitness_rejects_exceptions():
     def raises(x):
         raise RuntimeError("boom")
 
     a = _FakeAdapter(raises)
     b = _FakeAdapter(lambda x: 1.0)
     fitness = CrossAdapterFitness(a, b)
-    assert fitness.score([0.0]) == 0.0
+    with pytest.raises(EvaluationError, match="boom"):
+        fitness.score([0.0])

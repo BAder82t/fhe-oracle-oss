@@ -6,6 +6,9 @@ from __future__ import annotations
 
 import numpy as np
 
+from fhe_oracle import EvaluationError
+import pytest
+
 from fhe_oracle.multi_output import MultiOutputFitness, MultiOutputMode
 
 
@@ -100,10 +103,11 @@ def test_scalar_output_falls_back_gracefully():
     assert abs(fitness(np.zeros(2)) - 0.2) < 1e-12
 
 
-def test_score_returns_zero_on_exception():
-    """Exceptions in plaintext/fhe yield 0 (no propagation)."""
+def test_score_rejects_exception():
+    """Exceptions cannot be interpreted as zero divergence."""
     def boom(x):
         raise RuntimeError("bad")
 
     fitness = MultiOutputFitness(plaintext_fn=boom, fhe_fn=boom)
-    assert fitness.score(np.zeros(3)) == 0.0
+    with pytest.raises(EvaluationError, match="bad"):
+        fitness.score(np.zeros(3))

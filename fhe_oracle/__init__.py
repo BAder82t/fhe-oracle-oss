@@ -38,7 +38,7 @@ from .diagnostics import (
 from .differential import CrossAdapterFitness, differential_test
 from .diversity import DiversityInjector, InjectionStrategy
 from .empirical import EmpiricalResult, EmpiricalSearch
-from .fitness import DivergenceFitness
+from .fitness import DivergenceFitness, EvaluationError
 from .guarantees import CoverageCertificate, confidence_adjusted_pass
 from .hybrid import HybridResult, run_hybrid
 from .multi_output import MultiOutputFitness, MultiOutputMode
@@ -61,6 +61,7 @@ __all__ = [
     "DiversityInjector",
     "EmpiricalResult",
     "EmpiricalSearch",
+    "EvaluationError",
     "FHEOracle",
     "HybridResult",
     "InjectionStrategy",

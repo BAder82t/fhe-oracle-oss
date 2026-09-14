@@ -13,9 +13,57 @@ whenever an ``adapter`` is supplied.
 
 from __future__ import annotations
 
-from typing import Callable
+from typing import Any, Callable
 
 import numpy as np
+
+
+class EvaluationError(ValueError):
+    """An evaluation cannot support a precision verdict."""
+
+
+def validated_outputs(plain, fhe) -> tuple[np.ndarray, np.ndarray]:
+    """Require matching, nonempty, finite real outputs; never truncate."""
+    try:
+        p = np.atleast_1d(np.asarray(plain))
+        f = np.atleast_1d(np.asarray(fhe))
+        if np.iscomplexobj(p) or np.iscomplexobj(f):
+            raise EvaluationError("outputs must be real-valued")
+        p = p.astype(np.float64)
+        f = f.astype(np.float64)
+    except (TypeError, ValueError) as exc:
+        raise EvaluationError(f"invalid numeric output: {exc}") from exc
+    if p.shape != f.shape:
+        raise EvaluationError(f"output shape mismatch: {p.shape} != {f.shape}")
+    if p.size == 0:
+        raise EvaluationError("outputs must be nonempty")
+    if not np.all(np.isfinite(p)) or not np.all(np.isfinite(f)):
+        raise EvaluationError("outputs must contain only finite values")
+    return p, f
+
+
+def absolute_error(plain, fhe) -> np.ndarray:
+    p, f = validated_outputs(plain, fhe)
+    with np.errstate(over="ignore", invalid="ignore"):
+        diff = np.abs(p - f)
+    if not np.all(np.isfinite(diff)):
+        raise EvaluationError("output divergence is not finite")
+    return diff
+
+
+def finite_score(value) -> float:
+    score = float(value)
+    if not np.isfinite(score):
+        raise EvaluationError("fitness score must be finite")
+    return score
+
+
+def evaluate_outputs(plaintext_fn, fhe_fn, x) -> tuple[np.ndarray, np.ndarray]:
+    try:
+        plain, fhe = plaintext_fn(x), fhe_fn(x)
+    except Exception as exc:
+        raise EvaluationError(f"model evaluation failed: {exc}") from exc
+    return validated_outputs(plain, fhe)
 
 
 class DivergenceFitness:
@@ -44,23 +92,10 @@ class DivergenceFitness:
         self._fhe_fn = fhe_fn
         self._reduce = output_reducer
 
-    def score(self, x: list[float]) -> float:
-        """Return the divergence at x. Exceptions return 0.0."""
-        try:
-            plain = _to_array(self._plaintext_fn(x))
-            fhe = _to_array(self._fhe_fn(x))
-        except Exception:
-            return 0.0
-
-        if plain.shape != fhe.shape:
-            n = min(plain.size, fhe.size)
-            plain = plain.ravel()[:n]
-            fhe = fhe.ravel()[:n]
-
-        diff = np.abs(plain - fhe)
-        if diff.size == 0:
-            return 0.0
-        return float(self._reduce(diff))
+    def score(self, x: Any) -> float:
+        """Return divergence; invalid evaluations raise EvaluationError."""
+        plain, fhe = evaluate_outputs(self._plaintext_fn, self._fhe_fn, x)
+        return finite_score(self._reduce(absolute_error(plain, fhe)))
 
 
 def _to_array(value) -> np.ndarray:

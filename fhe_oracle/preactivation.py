@@ -64,6 +64,8 @@ from typing import Any, Callable, Iterable
 
 import numpy as np
 
+from .fitness import DivergenceFitness
+
 from .core import FHEOracle
 
 
@@ -106,19 +108,10 @@ class _PreactivationFitness:
         self._reduce = output_reducer
 
     def score(self, z) -> float:
-        try:
-            z_arr = np.asarray(z, dtype=np.float64).ravel()
-            x, clip_dist = self._z_to_x(z_arr)
-            plain = _to_array(self._plain(x))
-            fhe = _to_array(self._fhe(x))
-            n = min(plain.size, fhe.size)
-            if n == 0:
-                return 0.0
-            diff = np.abs(plain.ravel()[:n] - fhe.ravel()[:n])
-            div = float(self._reduce(diff)) if diff.size > 0 else 0.0
-            return div - self._clip_penalty * float(clip_dist)
-        except Exception:
-            return 0.0
+        z_arr = np.asarray(z, dtype=np.float64).ravel()
+        x, clip_dist = self._z_to_x(z_arr)
+        div = DivergenceFitness(self._plain, self._fhe, self._reduce).score(x)
+        return div - self._clip_penalty * float(clip_dist)
 
 
 class PreactivationOracle:
@@ -218,16 +211,7 @@ class PreactivationOracle:
 
     def measure_divergence_at(self, x) -> float:
         """Pure |plain(x) - fhe(x)| at a given x, reducer-aggregated."""
-        try:
-            plain = _to_array(self._plain(x))
-            fhe = _to_array(self._fhe(x))
-            n = min(plain.size, fhe.size)
-            if n == 0:
-                return 0.0
-            diff = np.abs(plain.ravel()[:n] - fhe.ravel()[:n])
-            return float(self._reduce(diff)) if diff.size > 0 else 0.0
-        except Exception:
-            return 0.0
+        return DivergenceFitness(self._plain, self._fhe, self._reduce).score(x)
 
     def run(
         self,

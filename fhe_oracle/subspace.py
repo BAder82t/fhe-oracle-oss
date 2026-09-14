@@ -74,6 +74,8 @@ from typing import Any, Callable, Optional
 
 import numpy as np
 
+from .fitness import DivergenceFitness
+
 
 @dataclass
 class _Tracker:
@@ -118,15 +120,7 @@ class _ClipPenaltyFitness:
         x_raw = self._anchor + self._R @ z_arr
         x_clipped = np.clip(x_raw, self._lo, self._hi)
         clip_dist = float(np.linalg.norm(x_raw - x_clipped))
-        try:
-            p = self._plain(x_clipped)
-            f = self._fhe(x_clipped)
-        except Exception:
-            return 0.0
-        p_arr = np.atleast_1d(np.asarray(p, dtype=np.float64)).ravel()
-        f_arr = np.atleast_1d(np.asarray(f, dtype=np.float64)).ravel()
-        n = min(p_arr.size, f_arr.size)
-        div = float(np.max(np.abs(p_arr[:n] - f_arr[:n]))) if n > 0 else 0.0
+        div = DivergenceFitness(self._plain, self._fhe).score(x_clipped)
         if div > self._tracker.best_error:
             self._tracker.best_error = div
             self._tracker.best_x = x_clipped.copy()
@@ -343,19 +337,7 @@ class SubspaceOracle:
 
     def _measure_divergence(self, x: np.ndarray) -> float:
         """True |plain(x) - fhe(x)|, reducer-max."""
-        try:
-            p_arr = np.atleast_1d(
-                np.asarray(self.plaintext_fn(x), dtype=np.float64)
-            ).ravel()
-            f_arr = np.atleast_1d(
-                np.asarray(self.fhe_fn(x), dtype=np.float64)
-            ).ravel()
-            n = min(p_arr.size, f_arr.size)
-            if n == 0:
-                return 0.0
-            return float(np.max(np.abs(p_arr[:n] - f_arr[:n])))
-        except Exception:
-            return 0.0
+        return DivergenceFitness(self.plaintext_fn, self.fhe_fn).score(x)
 
     def _random_probe(
         self, n: int, rng: np.random.Generator

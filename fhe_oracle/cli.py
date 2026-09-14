@@ -100,7 +100,11 @@ def main(argv: Optional[list[str]] = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
     if args.command == "check":
-        return _run_check(args)
+        try:
+            return _run_check(args)
+        except Exception as exc:
+            print(f"fhe-oracle: ERROR: {exc}", file=sys.stderr)
+            return 2
     parser.print_help()
     return 2
 

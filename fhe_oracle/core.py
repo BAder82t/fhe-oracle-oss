@@ -28,7 +28,7 @@ import numpy as np
 from . import registry
 from .adaptive import AdaptiveBudget, AdaptiveConfig
 from .diversity import DiversityInjector, InjectionStrategy
-from .fitness import DivergenceFitness
+from .fitness import DivergenceFitness, EvaluationError, absolute_error, finite_score
 from .guarantees import CoverageCertificate
 from .multi_output import MultiOutputFitness, MultiOutputMode
 from .seeds import fallback_corner_seeds
@@ -390,6 +390,10 @@ class FHEOracle:
                 "The 'cma' package is required. Install with: pip install cma"
             ) from exc
 
+        if n_trials <= 0:
+            raise ValueError("n_trials must be positive")
+        if not np.isfinite(threshold) or threshold < 0:
+            raise ValueError("threshold must be finite and non-negative")
         t0 = time.perf_counter()
 
         best_input = list(self._x0)
@@ -419,7 +423,7 @@ class FHEOracle:
             best_rand_score = -np.inf
             for _ in range(b_rand):
                 x = rng_floor.uniform(lows, highs)
-                score = self._fitness.score(list(x))
+                score = self._score(list(x))
                 total_evals += 1
                 if score > best_rand_score:
                     best_rand_score = score
@@ -462,6 +466,10 @@ class FHEOracle:
             if self._separable:
                 options["CMA_diagonal"] = True
 
+            if self._input_dim == 1:
+                # pycma's bounded maxstd adjustment assumes dimension > 1.
+                # Boundary transforms still keep sampled inputs in bounds.
+                options["maxstd"] = np.inf
             es = cma.CMAEvolutionStrategy(cma_x0, cma_sigma0, options)
 
             if (
@@ -531,7 +539,7 @@ class FHEOracle:
                         solutions[-(i + 1)] = list(injections[i])
                     diversity_injections += n_replace
 
-                fitnesses = [self._fitness.score(list(s)) for s in solutions]
+                fitnesses = [self._score(list(s)) for s in solutions]
                 for sol, s in zip(solutions, fitnesses):
                     total_evals += 1
                     cma_evals += 1
@@ -562,7 +570,7 @@ class FHEOracle:
                             switch_rng = np.random.default_rng(switch_seed)
                             while cma_evals < b_cma:
                                 x = switch_rng.uniform(lows_b, highs_b)
-                                s = self._fitness.score(list(x))
+                                s = self._score(list(x))
                                 total_evals += 1
                                 cma_evals += 1
                                 if s > best_score:
@@ -642,6 +650,8 @@ class FHEOracle:
                 if self._separable:
                     run_options["CMA_diagonal"] = True
 
+                if self._input_dim == 1:
+                    run_options["maxstd"] = np.inf
                 es = cma.CMAEvolutionStrategy(run_x0, run_sigma, run_options)
 
                 # Heuristic seed injection only on the first run.
@@ -674,7 +684,7 @@ class FHEOracle:
                 while not es.stop() and cma_evals_total < b_cma:
                     solutions = es.ask()
                     fitnesses = [
-                        self._fitness.score(list(s)) for s in solutions
+                        self._score(list(s)) for s in solutions
                     ]
                     for sol, s in zip(solutions, fitnesses):
                         total_evals += 1
@@ -781,7 +791,7 @@ class FHEOracle:
         def _still_fails(candidate: np.ndarray) -> bool:
             nonlocal n_evals
             n_evals += 1
-            return self._fitness.score(candidate.tolist()) >= threshold
+            return self._score(candidate.tolist()) >= threshold
 
         if self._seed is not None:
             order = np.random.default_rng(
@@ -812,7 +822,7 @@ class FHEOracle:
                     break
             x[i] = x[i] + best_f * (ref[i] - x[i])
 
-        final_score = self._fitness.score(x.tolist())
+        final_score = self._score(x.tolist())
         max_error, _ = self._measure_divergence(x.tolist(), final_score)
 
         return ShrinkResult(
@@ -824,6 +834,9 @@ class FHEOracle:
             threshold=threshold,
             n_evals=n_evals,
         )
+
+    def _score(self, x: list[float]) -> float:
+        return finite_score(self._fitness.score(x))
 
     def _measure_divergence(
         self, x: list[float], fallback_score: float
@@ -840,7 +853,7 @@ class FHEOracle:
         """
         noise_state: dict[str, float | str] = {}
         if self._adapter is None and self._fhe_fn is None:
-            return fallback_score, noise_state
+            return finite_score(fallback_score), noise_state
         try:
             if self._adapter is not None:
                 ct_in = self._adapter.encrypt(x)
@@ -848,7 +861,7 @@ class FHEOracle:
                 ct_out = self._adapter.run_fhe_program(ct_in)
                 budget_after = self._adapter.get_noise_budget(ct_out)
                 depth_used = self._adapter.get_mult_depth_used(ct_out)
-                fhe_val = _to_array(self._adapter.decrypt(ct_out))
+                fhe_val = self._adapter.decrypt(ct_out)
                 noise_state = {
                     "budget_before": float(budget_before),
                     "budget_after": float(budget_after),
@@ -856,15 +869,12 @@ class FHEOracle:
                 }
             else:
                 assert self._fhe_fn is not None  # guaranteed by the early return above
-                fhe_val = _to_array(self._fhe_fn(x))
+                fhe_val = self._fhe_fn(x)
 
-            plain_val = _to_array(self._plaintext_fn(x))
-            n = min(plain_val.size, fhe_val.size)
-            diff = np.abs(plain_val.ravel()[:n] - fhe_val.ravel()[:n])
-            max_error = float(diff.max()) if diff.size > 0 else 0.0
+            plain_val = self._plaintext_fn(x)
+            max_error = float(absolute_error(plain_val, fhe_val).max())
         except Exception as exc:
-            max_error = 0.0
-            noise_state["error"] = str(exc)
+            raise EvaluationError(f"final evaluation failed: {exc}") from exc
         return max_error, noise_state
 
 

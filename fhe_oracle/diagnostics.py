@@ -22,6 +22,8 @@ from typing import Any, Callable, Optional
 
 import numpy as np
 
+from .fitness import DivergenceFitness, absolute_error
+
 
 @dataclass
 class ComponentLog:
@@ -111,17 +113,7 @@ class InstrumentedFitness:
 
     def score(self, x) -> float:
         arr = np.asarray(x, dtype=np.float64)
-        try:
-            p = self.plaintext_fn(x)
-            f = self.fhe_fn(x)
-            p_arr = np.atleast_1d(np.asarray(p, dtype=np.float64)).ravel()
-            f_arr = np.atleast_1d(np.asarray(f, dtype=np.float64)).ravel()
-            n = min(p_arr.size, f_arr.size)
-            divergence = (
-                float(np.max(np.abs(p_arr[:n] - f_arr[:n]))) if n > 0 else 0.0
-            )
-        except Exception:
-            divergence = 0.0
+        divergence = DivergenceFitness(self.plaintext_fn, self.fhe_fn).score(x)
         noise_term = min(
             1.0, float(np.linalg.norm(arr) / (np.sqrt(self.dim) * 3.0))
         )
@@ -257,12 +249,7 @@ def per_op_trace(
     f_out = fhe_fn(x)
     p_scalar = _output_to_scalar(p_out)
     f_scalar = _output_to_scalar(f_out)
-    p_arr = np.atleast_1d(np.asarray(p_out, dtype=np.float64)).ravel()
-    f_arr = np.atleast_1d(np.asarray(f_out, dtype=np.float64)).ravel()
-    n = min(p_arr.size, f_arr.size)
-    total = (
-        float(np.max(np.abs(p_arr[:n] - f_arr[:n]))) if n > 0 else 0.0
-    )
+    total = float(absolute_error(p_out, f_out).max())
 
     trace_method = getattr(fhe_fn, "trace", None)
     if callable(trace_method):

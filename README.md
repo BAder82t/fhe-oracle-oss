@@ -1,6 +1,6 @@
 # FHE Oracle
 
-[![CI](https://github.com/BAder82t/fhe-oracle/actions/workflows/ci.yml/badge.svg)](https://github.com/BAder82t/fhe-oracle/actions/workflows/ci.yml)
+[![CI](https://github.com/BAder82t/fhe-oracle-oss/actions/workflows/ci.yml/badge.svg)](https://github.com/BAder82t/fhe-oracle-oss/actions/workflows/ci.yml)
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
 Adversarial precision testing for Fully Homomorphic Encryption.
@@ -293,8 +293,7 @@ Full template: [examples/github_action.yml](./examples/github_action.yml).
   random subspaces and searches with CMA-ES. Currently benefits
   only low-rank hidden-layer quantisation bugs; for dense
   directional / corner-region bugs prefer `PreactivationOracle`
-  (when `W, b` are available) or uniform random sampling. See
-  `research/release/v030-benchmark-report.md` for the evaluation.
+  (when `W, b` are available) or uniform random sampling.
 - **Pure-divergence defaults** — `w_noise` and `w_depth` now
   defaulted to `0.0` in v0.3 (paper §6.15 empirical evidence).
   Those arguments were removed in v0.5.1; current Core uses divergence

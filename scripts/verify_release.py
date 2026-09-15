@@ -16,7 +16,6 @@ import inspect
 import sys
 from typing import Iterable
 
-
 MODULES: list[str] = [
     "fhe_oracle",
     "fhe_oracle.core",
@@ -78,7 +77,7 @@ def _check_imports(names: Iterable[str]) -> list[str]:
         try:
             importlib.import_module(name)
             print(f"OK  import {name}")
-        except Exception as exc:  # pragma: no cover - defensive
+        except Exception as exc:  # pragma: no cover - defensive  # noqa: BLE001 - smoke test records and reports the failure
             failures.append(f"{name}: {exc}")
             print(f"FAIL import {name}: {exc}")
     return failures

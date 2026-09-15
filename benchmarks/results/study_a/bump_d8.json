@@ -1,0 +1,1913 @@
+{
+ "config": {
+  "circuit": "bump_d8",
+  "budget": 200,
+  "threshold": 0.01,
+  "study": true,
+  "seeds": [
+   11,
+   12,
+   13,
+   14,
+   15,
+   16,
+   17,
+   18,
+   19,
+   20,
+   21,
+   22,
+   23,
+   24,
+   25,
+   26,
+   27,
+   28,
+   29,
+   30
+  ]
+ },
+ "start": {
+  "guarded": {
+   "git_head": "56b6d4149765d783657cb3441e5bae70d8ac8deb",
+   "sha256": {
+    "fhe_oracle/core.py": "24979925df7d0a090e170f9daf1e9705bd1fd115628688adb01dc81fd9a4e143",
+    "fhe_oracle/autoconfig.py": "853c5b1fc158e7f694a9e26825dd4f09631fded8eaaeb244d9fb812ff7431090",
+    "benchmarks/study_a_boundary_confirmation.py": "18b64e61e2c90dc51bc536330dd57fc950650ee7575a11200ea7d273245679d5"
+   }
+  },
+  "checks": {
+   "feature_commit_in_head": true,
+   "fhe_oracle_clean": true,
+   "package_dir_ok": true
+  },
+  "prereg": {
+   "path": "benchmarks/preregistration_2026-09-15.md",
+   "commit": "962aab31e4239d074130a8f80394dac3e2731c1d",
+   "expected_sha256": "912da47075386a07163dba517dfc06b4dfa9d24461fbb587b30e1c924a694386",
+   "file_sha256": "912da47075386a07163dba517dfc06b4dfa9d24461fbb587b30e1c924a694386",
+   "committed_sha256": "912da47075386a07163dba517dfc06b4dfa9d24461fbb587b30e1c924a694386",
+   "ok": true
+  },
+  "equivalence_archive": {
+   "reference": {
+    "file": "autoconfig_accounting_only_v5.py",
+    "sha256": "006f9ca2ec7b8bb8a21a43b921d5887c518de0138000db9f5f829eb320584c72"
+   },
+   "equivalence_check": {
+    "file": "equivalence_check.json",
+    "sha256": "254e832cf2c35434d3a4315cc2063f8b342e156a15937a504fec7d2014518ddb"
+   }
+  },
+  "environment": {
+   "python": "3.13.7",
+   "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+   "cpu_count": 14,
+   "loadavg": [
+    9.4541015625,
+    11.66943359375,
+    13.01611328125
+   ],
+   "packages": {
+    "tenseal": "0.3.16",
+    "cma": "4.4.4",
+    "numpy": "2.4.6",
+    "scipy": "1.17.1"
+   },
+   "recorded_sha256": {
+    "benchmarks/tenseal_circuits.py": "ed57ab2b964a85b44e2de3cfcf2fc4b68b53b3ab3926022c3f910cf8aa929f63",
+    "fhe_oracle/adapters/tenseal_adapter.py": "e6f904fbf5e17668318e303851b63f1f7639efb91bb802ed4982a5505847c169",
+    "fhe_oracle/fitness.py": "22a68f042aa517fc54fc0c1f5dd5040579daf527ea54d51621004b83b1a59db9",
+    "fhe_oracle/preactivation.py": "53b8f9b08adda2dd1b59bea328da00f160ceae66529c538e057f53f29715051d",
+    "fhe_oracle/diagnostics.py": "be596db4096c3f344486b5ce638a02c3e2fe60cf052aae2e8d723207a781a261"
+   },
+   "utc": "2026-09-15T11:08:21+00:00"
+  }
+ },
+ "seeds": {
+  "11": {
+   "after": {
+    "metric": 0.9216981970208041,
+    "max_error_all_calls": 0.9216981970208041,
+    "reported_max_error": 0.9216981970208041,
+    "verdict": "FAIL",
+    "worst_input": [
+     -1.2377173268289505,
+     -1.0306749636799883,
+     -1.0066234697500243,
+     -0.20519245747816403,
+     0.3756540955839919,
+     0.4685551404475329,
+     0.7775846289928781,
+     1.4042478460560073
+    ],
+    "strategy": "cma_es",
+    "regime": "standard",
+    "n_trials_reported": 198,
+    "fhe_calls": 199,
+    "remeasure_events": 1,
+    "kind_counts": {
+     "boundary": 3,
+     "probe": 70,
+     "remeasure": 1,
+     "search": 125
+    },
+    "identity_ok": true,
+    "within_prereg_bound": true,
+    "within_n_trials": true,
+    "remeasure_documented": true,
+    "search_max_error": 0.9216981970208041,
+    "remeasured_error": 0.9216981970208041,
+    "oob": 0,
+    "wall_s": 0.033638875000178814,
+    "fhe_s": 0.000523416994838044
+   },
+   "accounting": {
+    "metric": 0.9216981970208041,
+    "max_error_all_calls": 0.9216981970208041,
+    "reported_max_error": 0.9216981970208041,
+    "verdict": "FAIL",
+    "worst_input": [
+     -1.2377173268289505,
+     -1.0306749636799883,
+     -1.0066234697500243,
+     -0.20519245747816403,
+     0.3756540955839919,
+     0.4685551404475329,
+     0.7775846289928781,
+     1.4042478460560073
+    ],
+    "strategy": "cma_es",
+    "regime": "standard",
+    "n_trials_reported": 199,
+    "fhe_calls": 200,
+    "remeasure_events": 1,
+    "kind_counts": {
+     "probe": 70,
+     "remeasure": 1,
+     "search": 129
+    },
+    "identity_ok": true,
+    "within_prereg_bound": true,
+    "within_n_trials": true,
+    "remeasure_documented": true,
+    "search_max_error": 0.9216981970208041,
+    "remeasured_error": 0.9216981970208041,
+    "oob": 0,
+    "wall_s": 0.011350249988026917,
+    "fhe_s": 0.000471864448627457
+   },
+   "baseline_n": 198,
+   "random": {
+    "metric": 0.30611546959078556,
+    "fhe_calls": 198,
+    "oob": 0,
+    "wall_s": 0.002944250009022653,
+    "fhe_s": 0.0004886329406872392
+   },
+   "corner": {
+    "metric": 0.33382350388958576,
+    "fhe_calls": 198,
+    "oob": 0,
+    "wall_s": 0.0027870000049006194,
+    "fhe_s": 0.00045699995825998485
+   },
+   "seed_wall_s": 0.051381625002250075
+  },
+  "12": {
+   "after": {
+    "metric": 0.9395380809355043,
+    "max_error_all_calls": 0.9395380809355043,
+    "reported_max_error": 0.9395380809355043,
+    "verdict": "FAIL",
+    "worst_input": [
+     -1.2394933116227014,
+     -1.008647419760763,
+     -0.892335434660676,
+     -0.10071685819035081,
+     -0.034797907828763255,
+     0.4880008982670968,
+     0.6022352810518994,
+     1.2042377627721044
+    ],
+    "strategy": "cma_es",
+    "regime": "standard",
+    "n_trials_reported": 198,
+    "fhe_calls": 199,
+    "remeasure_events": 1,
+    "kind_counts": {
+     "boundary": 4,
+     "probe": 70,
+     "remeasure": 1,
+     "search": 124
+    },
+    "identity_ok": true,
+    "within_prereg_bound": true,
+    "within_n_trials": true,
+    "remeasure_documented": true,
+    "search_max_error": 0.9395380809355043,
+    "remeasured_error": 0.9395380809355043,
+    "oob": 0,
+    "wall_s": 0.012584542011609301,
+    "fhe_s": 0.0004974186886101961
+   },
+   "accounting": {
+    "metric": 0.9395380809355043,
+    "max_error_all_calls": 0.9395380809355043,
+    "reported_max_error": 0.9395380809355043,
+    "verdict": "FAIL",
+    "worst_input": [
+     -1.2394933116227014,
+     -1.008647419760763,
+     -0.892335434660676,
+     -0.10071685819035081,
+     -0.034797907828763255,
+     0.4880008982670968,
+     0.6022352810518994,
+     1.2042377627721044
+    ],
+    "strategy": "cma_es",
+    "regime": "standard",
+    "n_trials_reported": 199,
+    "fhe_calls": 200,
+    "remeasure_events": 1,
+    "kind_counts": {
+     "probe": 70,
+     "remeasure": 1,
+     "search": 129
+    },
+    "identity_ok": true,
+    "within_prereg_bound": true,
+    "within_n_trials": true,
+    "remeasure_documented": true,
+    "search_max_error": 0.9395380809355043,
+    "remeasured_error": 0.9395380809355043,
+    "oob": 0,
+    "wall_s": 0.011062459001550451,
+    "fhe_s": 0.0004704935709014535
+   },
+   "baseline_n": 198,
+   "random": {
+    "metric": 0.3442955484218082,
+    "fhe_calls": 198,
+    "oob": 0,
+    "wall_s": 0.003070791019126773,
+    "fhe_s": 0.00047811807598918676
+   },
+   "corner": {
+    "metric": 0.33382350388958576,
+    "fhe_calls": 198,
+    "oob": 0,
+    "wall_s": 0.002873416990041733,
+    "fhe_s": 0.0004700099816545844
+   },
+   "seed_wall_s": 0.03031895900494419
+  },
+  "13": {
+   "after": {
+    "metric": 0.9025901569954584,
+    "max_error_all_calls": 0.9025901569954584,
+    "reported_max_error": 0.9025901569954584,
+    "verdict": "FAIL",
+    "worst_input": [
+     -1.067315399065892,
+     -1.264747774352693,
+     -0.34842271065542846,
+     -0.1987438247155121,
+     0.6442151969353989,
+     0.47485901032710265,
+     0.8562470747235869,
+     1.355254771621616
+    ],
+    "strategy": "cma_es",
+    "regime": "standard",
+    "n_trials_reported": 198,
+    "fhe_calls": 199,
+    "remeasure_events": 1,
+    "kind_counts": {
+     "boundary": 4,
+     "probe": 70,
+     "remeasure": 1,
+     "search": 124
+    },
+    "identity_ok": true,
+    "within_prereg_bound": true,
+    "within_n_trials": true,
+    "remeasure_documented": true,
+    "search_max_error": 0.9025901569954584,
+    "remeasured_error": 0.9025901569954584,
+    "oob": 0,
+    "wall_s": 0.012837499991292134,
+    "fhe_s": 0.0004986760613974184
+   },
+   "accounting": {
+    "metric": 0.9145330508779826,
+    "max_error_all_calls": 0.9145330508779826,
+    "reported_max_error": 0.9145330508779826,
+    "verdict": "FAIL",
+    "worst_input": [
+     -1.4234570731114906,
+     -1.1309463980032255,
+     -0.3997676642226848,
+     -0.4591521047033372,
+     0.36009814441171634,
+     0.4012190066883004,
+     0.5430822739341976,
+     1.015006694761446
+    ],
+    "strategy": "cma_es",
+    "regime": "standard",
+    "n_trials_reported": 199,
+    "fhe_calls": 200,
+    "remeasure_events": 1,
+    "kind_counts": {
+     "probe": 70,
+     "remeasure": 1,
+     "search": 129
+    },
+    "identity_ok": true,
+    "within_prereg_bound": true,
+    "within_n_trials": true,
+    "remeasure_documented": true,
+    "search_max_error": 0.9145330508779826,
+    "remeasured_error": 0.9145330508779826,
+    "oob": 0,
+    "wall_s": 0.011904999992111698,
+    "fhe_s": 0.0004758810391649604
+   },
+   "baseline_n": 198,
+   "random": {
+    "metric": 0.3964561819753892,
+    "fhe_calls": 198,
+    "oob": 0,
+    "wall_s": 0.002732124994508922,
+    "fhe_s": 0.0004607022274285555
+   },
+   "corner": {
+    "metric": 0.33382350388958576,
+    "fhe_calls": 198,
+    "oob": 0,
+    "wall_s": 0.0029135000077076256,
+    "fhe_s": 0.0005207869980949908
+   },
+   "seed_wall_s": 0.031076125014806166
+  },
+  "14": {
+   "after": {
+    "metric": 0.9067001222215603,
+    "max_error_all_calls": 0.9067001222215603,
+    "reported_max_error": 0.9067001222215603,
+    "verdict": "FAIL",
+    "worst_input": [
+     -1.3534061984838002,
+     -0.6199184928839883,
+     -0.8825976606991174,
+     0.020989008653311714,
+     -0.00249790789654325,
+     0.23092361491925312,
+     0.58295405582399,
+     1.2503459912048815
+    ],
+    "strategy": "cma_es",
+    "regime": "standard",
+    "n_trials_reported": 198,
+    "fhe_calls": 199,
+    "remeasure_events": 1,
+    "kind_counts": {
+     "boundary": 4,
+     "probe": 70,
+     "remeasure": 1,
+     "search": 124
+    },
+    "identity_ok": true,
+    "within_prereg_bound": true,
+    "within_n_trials": true,
+    "remeasure_documented": true,
+    "search_max_error": 0.9067001222215603,
+    "remeasured_error": 0.9067001222215603,
+    "oob": 0,
+    "wall_s": 0.02581854202435352,
+    "fhe_s": 0.0011286789667792618
+   },
+   "accounting": {
+    "metric": 0.9067001222215603,
+    "max_error_all_calls": 0.9067001222215603,
+    "reported_max_error": 0.9067001222215603,
+    "verdict": "FAIL",
+    "worst_input": [
+     -1.3534061984838002,
+     -0.6199184928839883,
+     -0.8825976606991174,
+     0.020989008653311714,
+     -0.00249790789654325,
+     0.23092361491925312,
+     0.58295405582399,
+     1.2503459912048815
+    ],
+    "strategy": "cma_es",
+    "regime": "standard",
+    "n_trials_reported": 199,
+    "fhe_calls": 200,
+    "remeasure_events": 1,
+    "kind_counts": {
+     "probe": 70,
+     "remeasure": 1,
+     "search": 129
+    },
+    "identity_ok": true,
+    "within_prereg_bound": true,
+    "within_n_trials": true,
+    "remeasure_documented": true,
+    "search_max_error": 0.9067001222215603,
+    "remeasured_error": 0.9067001222215603,
+    "oob": 0,
+    "wall_s": 0.018185249995440245,
+    "fhe_s": 0.0007421659829560667
+   },
+   "baseline_n": 198,
+   "random": {
+    "metric": 0.2559463016526869,
+    "fhe_calls": 198,
+    "oob": 0,
+    "wall_s": 0.0029754170100204647,
+    "fhe_s": 0.00047459304914809763
+   },
+   "corner": {
+    "metric": 0.2237685864950455,
+    "fhe_calls": 198,
+    "oob": 0,
+    "wall_s": 0.002707125007873401,
+    "fhe_s": 0.0004487428814172745
+   },
+   "seed_wall_s": 0.050389124982757494
+  },
+  "15": {
+   "after": {
+    "metric": 0.9284303780245007,
+    "max_error_all_calls": 0.9284303780245007,
+    "reported_max_error": 0.9284303780245007,
+    "verdict": "FAIL",
+    "worst_input": [
+     -0.9235651351700115,
+     -0.9197926626309493,
+     -0.7776858418427602,
+     -0.03969644971102587,
+     0.0474210507721584,
+     0.4845341663342317,
+     0.5430211913298285,
+     0.9716147403290397
+    ],
+    "strategy": "cma_es",
+    "regime": "standard",
+    "n_trials_reported": 198,
+    "fhe_calls": 199,
+    "remeasure_events": 1,
+    "kind_counts": {
+     "boundary": 4,
+     "probe": 70,
+     "remeasure": 1,
+     "search": 124
+    },
+    "identity_ok": true,
+    "within_prereg_bound": true,
+    "within_n_trials": true,
+    "remeasure_documented": true,
+    "search_max_error": 0.9284303780245007,
+    "remeasured_error": 0.9284303780245007,
+    "oob": 0,
+    "wall_s": 0.012725834007142112,
+    "fhe_s": 0.0004967857385054231
+   },
+   "accounting": {
+    "metric": 0.9284303780245007,
+    "max_error_all_calls": 0.9284303780245007,
+    "reported_max_error": 0.9284303780245007,
+    "verdict": "FAIL",
+    "worst_input": [
+     -0.9235651351700115,
+     -0.9197926626309493,
+     -0.7776858418427602,
+     -0.03969644971102587,
+     0.0474210507721584,
+     0.4845341663342317,
+     0.5430211913298285,
+     0.9716147403290397
+    ],
+    "strategy": "cma_es",
+    "regime": "standard",
+    "n_trials_reported": 199,
+    "fhe_calls": 200,
+    "remeasure_events": 1,
+    "kind_counts": {
+     "probe": 70,
+     "remeasure": 1,
+     "search": 129
+    },
+    "identity_ok": true,
+    "within_prereg_bound": true,
+    "within_n_trials": true,
+    "remeasure_documented": true,
+    "search_max_error": 0.9284303780245007,
+    "remeasured_error": 0.9284303780245007,
+    "oob": 0,
+    "wall_s": 0.012316167005337775,
+    "fhe_s": 0.00047482570516876876
+   },
+   "baseline_n": 198,
+   "random": {
+    "metric": 0.34724978953974195,
+    "fhe_calls": 198,
+    "oob": 0,
+    "wall_s": 0.0029200419958215207,
+    "fhe_s": 0.0004800429742317647
+   },
+   "corner": {
+    "metric": 0.33382350388958576,
+    "fhe_calls": 198,
+    "oob": 0,
+    "wall_s": 0.0029858330090064555,
+    "fhe_s": 0.0005129130440764129
+   },
+   "seed_wall_s": 0.031635374994948506
+  },
+  "16": {
+   "after": {
+    "metric": 0.9064220716778519,
+    "max_error_all_calls": 0.9064220716778519,
+    "reported_max_error": 0.9064220716778519,
+    "verdict": "FAIL",
+    "worst_input": [
+     -1.0432680976207327,
+     -0.7845983618936057,
+     -0.36325561672039514,
+     0.029218024321901064,
+     0.07190872359114397,
+     0.7928935174995588,
+     1.3686273130166355,
+     1.2092944814297106
+    ],
+    "strategy": "cma_es",
+    "regime": "standard",
+    "n_trials_reported": 198,
+    "fhe_calls": 199,
+    "remeasure_events": 1,
+    "kind_counts": {
+     "boundary": 4,
+     "probe": 70,
+     "remeasure": 1,
+     "search": 124
+    },
+    "identity_ok": true,
+    "within_prereg_bound": true,
+    "within_n_trials": true,
+    "remeasure_documented": true,
+    "search_max_error": 0.9064220716778519,
+    "remeasured_error": 0.9064220716778519,
+    "oob": 0,
+    "wall_s": 0.012820250005461276,
+    "fhe_s": 0.0005123708688188344
+   },
+   "accounting": {
+    "metric": 0.9064220716778519,
+    "max_error_all_calls": 0.9064220716778519,
+    "reported_max_error": 0.9064220716778519,
+    "verdict": "FAIL",
+    "worst_input": [
+     -1.0432680976207327,
+     -0.7845983618936057,
+     -0.36325561672039514,
+     0.029218024321901064,
+     0.07190872359114397,
+     0.7928935174995588,
+     1.3686273130166355,
+     1.2092944814297106
+    ],
+    "strategy": "cma_es",
+    "regime": "standard",
+    "n_trials_reported": 199,
+    "fhe_calls": 200,
+    "remeasure_events": 1,
+    "kind_counts": {
+     "probe": 70,
+     "remeasure": 1,
+     "search": 129
+    },
+    "identity_ok": true,
+    "within_prereg_bound": true,
+    "within_n_trials": true,
+    "remeasure_documented": true,
+    "search_max_error": 0.9064220716778519,
+    "remeasured_error": 0.9064220716778519,
+    "oob": 0,
+    "wall_s": 0.010964375018374994,
+    "fhe_s": 0.00045883029815740883
+   },
+   "baseline_n": 198,
+   "random": {
+    "metric": 0.18326963891613454,
+    "fhe_calls": 198,
+    "oob": 0,
+    "wall_s": 0.002738291019340977,
+    "fhe_s": 0.00046461704187095165
+   },
+   "corner": {
+    "metric": 0.33382350388958576,
+    "fhe_calls": 198,
+    "oob": 0,
+    "wall_s": 0.0026881250087171793,
+    "fhe_s": 0.000453415879746899
+   },
+   "seed_wall_s": 0.02979720800067298
+  },
+  "17": {
+   "after": {
+    "metric": 0.9507977790252377,
+    "max_error_all_calls": 0.9507977790252377,
+    "reported_max_error": 0.9507977790252377,
+    "verdict": "FAIL",
+    "worst_input": [
+     -0.95593212376511,
+     -0.7907065119643,
+     -0.38464175312405197,
+     -0.1330492440042019,
+     0.29130944584066554,
+     0.6396692135198221,
+     0.8987199998873072,
+     1.536092110828467
+    ],
+    "strategy": "cma_es",
+    "regime": "standard",
+    "n_trials_reported": 198,
+    "fhe_calls": 199,
+    "remeasure_events": 1,
+    "kind_counts": {
+     "boundary": 4,
+     "probe": 70,
+     "remeasure": 1,
+     "search": 124
+    },
+    "identity_ok": true,
+    "within_prereg_bound": true,
+    "within_n_trials": true,
+    "remeasure_documented": true,
+    "search_max_error": 0.9507977790252377,
+    "remeasured_error": 0.9507977790252377,
+    "oob": 0,
+    "wall_s": 0.012989292008569464,
+    "fhe_s": 0.0005369064456317574
+   },
+   "accounting": {
+    "metric": 0.9507977790252377,
+    "max_error_all_calls": 0.9507977790252377,
+    "reported_max_error": 0.9507977790252377,
+    "verdict": "FAIL",
+    "worst_input": [
+     -0.95593212376511,
+     -0.7907065119643,
+     -0.38464175312405197,
+     -0.1330492440042019,
+     0.29130944584066554,
+     0.6396692135198221,
+     0.8987199998873072,
+     1.536092110828467
+    ],
+    "strategy": "cma_es",
+    "regime": "standard",
+    "n_trials_reported": 199,
+    "fhe_calls": 200,
+    "remeasure_events": 1,
+    "kind_counts": {
+     "probe": 70,
+     "remeasure": 1,
+     "search": 129
+    },
+    "identity_ok": true,
+    "within_prereg_bound": true,
+    "within_n_trials": true,
+    "remeasure_documented": true,
+    "search_max_error": 0.9507977790252377,
+    "remeasured_error": 0.9507977790252377,
+    "oob": 0,
+    "wall_s": 0.012242000026162714,
+    "fhe_s": 0.0005082941497676075
+   },
+   "baseline_n": 198,
+   "random": {
+    "metric": 0.21305479850945952,
+    "fhe_calls": 198,
+    "oob": 0,
+    "wall_s": 0.002859917003661394,
+    "fhe_s": 0.0004812498518731445
+   },
+   "corner": {
+    "metric": 0.2237685864950455,
+    "fhe_calls": 198,
+    "oob": 0,
+    "wall_s": 0.00291070798994042,
+    "fhe_s": 0.0004822878399863839
+   },
+   "seed_wall_s": 0.03172395800356753
+  },
+  "18": {
+   "after": {
+    "metric": 0.7973925699732722,
+    "max_error_all_calls": 0.7973925699732722,
+    "reported_max_error": 0.7973925699732722,
+    "verdict": "FAIL",
+    "worst_input": [
+     -1.3004535139849485,
+     -0.3915698526271798,
+     -0.6214392026985444,
+     -0.7459071413504721,
+     0.722606795203988,
+     0.4292004420366648,
+     1.2230041935097478,
+     1.2747572389499071
+    ],
+    "strategy": "cma_es",
+    "regime": "standard",
+    "n_trials_reported": 198,
+    "fhe_calls": 199,
+    "remeasure_events": 1,
+    "kind_counts": {
+     "boundary": 3,
+     "probe": 70,
+     "remeasure": 1,
+     "search": 125
+    },
+    "identity_ok": true,
+    "within_prereg_bound": true,
+    "within_n_trials": true,
+    "remeasure_documented": true,
+    "search_max_error": 0.7973925699732722,
+    "remeasured_error": 0.7973925699732722,
+    "oob": 0,
+    "wall_s": 0.01277149998350069,
+    "fhe_s": 0.0004971259622834623
+   },
+   "accounting": {
+    "metric": 0.7973925699732722,
+    "max_error_all_calls": 0.7973925699732722,
+    "reported_max_error": 0.7973925699732722,
+    "verdict": "FAIL",
+    "worst_input": [
+     -1.3004535139849485,
+     -0.3915698526271798,
+     -0.6214392026985444,
+     -0.7459071413504721,
+     0.722606795203988,
+     0.4292004420366648,
+     1.2230041935097478,
+     1.2747572389499071
+    ],
+    "strategy": "cma_es",
+    "regime": "standard",
+    "n_trials_reported": 199,
+    "fhe_calls": 200,
+    "remeasure_events": 1,
+    "kind_counts": {
+     "probe": 70,
+     "remeasure": 1,
+     "search": 129
+    },
+    "identity_ok": true,
+    "within_prereg_bound": true,
+    "within_n_trials": true,
+    "remeasure_documented": true,
+    "search_max_error": 0.7973925699732722,
+    "remeasured_error": 0.7973925699732722,
+    "oob": 0,
+    "wall_s": 0.011859292018925771,
+    "fhe_s": 0.0004807637888006866
+   },
+   "baseline_n": 198,
+   "random": {
+    "metric": 0.11214437289326253,
+    "fhe_calls": 198,
+    "oob": 0,
+    "wall_s": 0.002919833001215011,
+    "fhe_s": 0.00047619803808629513
+   },
+   "corner": {
+    "metric": 0.33382350388958576,
+    "fhe_calls": 198,
+    "oob": 0,
+    "wall_s": 0.0027091669908259064,
+    "fhe_s": 0.0004512506420724094
+   },
+   "seed_wall_s": 0.030999625014374033
+  },
+  "19": {
+   "after": {
+    "metric": 0.9404104669772605,
+    "max_error_all_calls": 0.9404104669772605,
+    "reported_max_error": 0.9404104669772605,
+    "verdict": "FAIL",
+    "worst_input": [
+     -1.156441557555803,
+     -0.9235376265741948,
+     -0.3500682994100387,
+     -0.09879295076019312,
+     -0.06984024011627013,
+     0.9059080454178257,
+     0.6950621956924893,
+     1.1912240322943193
+    ],
+    "strategy": "cma_es",
+    "regime": "standard",
+    "n_trials_reported": 198,
+    "fhe_calls": 199,
+    "remeasure_events": 1,
+    "kind_counts": {
+     "boundary": 4,
+     "probe": 70,
+     "remeasure": 1,
+     "search": 124
+    },
+    "identity_ok": true,
+    "within_prereg_bound": true,
+    "within_n_trials": true,
+    "remeasure_documented": true,
+    "search_max_error": 0.9404104669772605,
+    "remeasured_error": 0.9404104669772605,
+    "oob": 0,
+    "wall_s": 0.012032124999677762,
+    "fhe_s": 0.00048332384903915226
+   },
+   "accounting": {
+    "metric": 0.9404104669772605,
+    "max_error_all_calls": 0.9404104669772605,
+    "reported_max_error": 0.9404104669772605,
+    "verdict": "FAIL",
+    "worst_input": [
+     -1.156441557555803,
+     -0.9235376265741948,
+     -0.3500682994100387,
+     -0.09879295076019312,
+     -0.06984024011627013,
+     0.9059080454178257,
+     0.6950621956924893,
+     1.1912240322943193
+    ],
+    "strategy": "cma_es",
+    "regime": "standard",
+    "n_trials_reported": 199,
+    "fhe_calls": 200,
+    "remeasure_events": 1,
+    "kind_counts": {
+     "probe": 70,
+     "remeasure": 1,
+     "search": 129
+    },
+    "identity_ok": true,
+    "within_prereg_bound": true,
+    "within_n_trials": true,
+    "remeasure_documented": true,
+    "search_max_error": 0.9404104669772605,
+    "remeasured_error": 0.9404104669772605,
+    "oob": 0,
+    "wall_s": 0.01141833298606798,
+    "fhe_s": 0.0004647081659641117
+   },
+   "baseline_n": 198,
+   "random": {
+    "metric": 0.24609128980877581,
+    "fhe_calls": 198,
+    "oob": 0,
+    "wall_s": 0.00278641699696891,
+    "fhe_s": 0.00046433895477093756
+   },
+   "corner": {
+    "metric": 0.33382350388958576,
+    "fhe_calls": 198,
+    "oob": 0,
+    "wall_s": 0.0028411659877747297,
+    "fhe_s": 0.0004929069837089628
+   },
+   "seed_wall_s": 0.029788915999233723
+  },
+  "20": {
+   "after": {
+    "metric": 0.8971592485894514,
+    "max_error_all_calls": 0.8971592485894514,
+    "reported_max_error": 0.8971592485894514,
+    "verdict": "FAIL",
+    "worst_input": [
+     -0.8357769319064852,
+     -0.976025683498541,
+     -0.5314919218133648,
+     -0.3542918557858492,
+     0.5391052805297702,
+     0.6750178848624465,
+     0.8669214393641529,
+     0.8169786908343009
+    ],
+    "strategy": "cma_es",
+    "regime": "standard",
+    "n_trials_reported": 198,
+    "fhe_calls": 199,
+    "remeasure_events": 1,
+    "kind_counts": {
+     "boundary": 4,
+     "probe": 70,
+     "remeasure": 1,
+     "search": 124
+    },
+    "identity_ok": true,
+    "within_prereg_bound": true,
+    "within_n_trials": true,
+    "remeasure_documented": true,
+    "search_max_error": 0.8971592485894514,
+    "remeasured_error": 0.8971592485894514,
+    "oob": 0,
+    "wall_s": 0.012024916999507695,
+    "fhe_s": 0.00047132853069342673
+   },
+   "accounting": {
+    "metric": 0.8971592485894514,
+    "max_error_all_calls": 0.8971592485894514,
+    "reported_max_error": 0.8971592485894514,
+    "verdict": "FAIL",
+    "worst_input": [
+     -0.8357769319064852,
+     -0.976025683498541,
+     -0.5314919218133648,
+     -0.3542918557858492,
+     0.5391052805297702,
+     0.6750178848624465,
+     0.8669214393641529,
+     0.8169786908343009
+    ],
+    "strategy": "cma_es",
+    "regime": "standard",
+    "n_trials_reported": 199,
+    "fhe_calls": 200,
+    "remeasure_events": 1,
+    "kind_counts": {
+     "probe": 70,
+     "remeasure": 1,
+     "search": 129
+    },
+    "identity_ok": true,
+    "within_prereg_bound": true,
+    "within_n_trials": true,
+    "remeasure_documented": true,
+    "search_max_error": 0.8971592485894514,
+    "remeasured_error": 0.8971592485894514,
+    "oob": 0,
+    "wall_s": 0.012915208004415035,
+    "fhe_s": 0.00046317707165144384
+   },
+   "baseline_n": 198,
+   "random": {
+    "metric": 0.11980641093367961,
+    "fhe_calls": 198,
+    "oob": 0,
+    "wall_s": 0.00270770798670128,
+    "fhe_s": 0.0004522122326306999
+   },
+   "corner": {
+    "metric": 0.33382350388958576,
+    "fhe_calls": 198,
+    "oob": 0,
+    "wall_s": 0.002736291993642226,
+    "fhe_s": 0.0004566138668451458
+   },
+   "seed_wall_s": 0.03093300000182353
+  },
+  "21": {
+   "after": {
+    "metric": 0.90281288977263,
+    "max_error_all_calls": 0.90281288977263,
+    "reported_max_error": 0.90281288977263,
+    "verdict": "FAIL",
+    "worst_input": [
+     -0.686259725690359,
+     -0.8333504964429649,
+     -0.500874145936362,
+     -0.4433971488186655,
+     0.3607038472370143,
+     0.43648471806305716,
+     1.091895821884245,
+     1.043632477711817
+    ],
+    "strategy": "cma_es",
+    "regime": "standard",
+    "n_trials_reported": 198,
+    "fhe_calls": 199,
+    "remeasure_events": 1,
+    "kind_counts": {
+     "boundary": 4,
+     "probe": 70,
+     "remeasure": 1,
+     "search": 124
+    },
+    "identity_ok": true,
+    "within_prereg_bound": true,
+    "within_n_trials": true,
+    "remeasure_documented": true,
+    "search_max_error": 0.90281288977263,
+    "remeasured_error": 0.90281288977263,
+    "oob": 0,
+    "wall_s": 0.011948957981076092,
+    "fhe_s": 0.00048512386274524033
+   },
+   "accounting": {
+    "metric": 0.90281288977263,
+    "max_error_all_calls": 0.90281288977263,
+    "reported_max_error": 0.90281288977263,
+    "verdict": "FAIL",
+    "worst_input": [
+     -0.686259725690359,
+     -0.8333504964429649,
+     -0.500874145936362,
+     -0.4433971488186655,
+     0.3607038472370143,
+     0.43648471806305716,
+     1.091895821884245,
+     1.043632477711817
+    ],
+    "strategy": "cma_es",
+    "regime": "standard",
+    "n_trials_reported": 199,
+    "fhe_calls": 200,
+    "remeasure_events": 1,
+    "kind_counts": {
+     "probe": 70,
+     "remeasure": 1,
+     "search": 129
+    },
+    "identity_ok": true,
+    "within_prereg_bound": true,
+    "within_n_trials": true,
+    "remeasure_documented": true,
+    "search_max_error": 0.90281288977263,
+    "remeasured_error": 0.90281288977263,
+    "oob": 0,
+    "wall_s": 0.010937499988358468,
+    "fhe_s": 0.00046529926476068795
+   },
+   "baseline_n": 198,
+   "random": {
+    "metric": 0.21354200393732187,
+    "fhe_calls": 198,
+    "oob": 0,
+    "wall_s": 0.0027289580029901117,
+    "fhe_s": 0.00046182487858459353
+   },
+   "corner": {
+    "metric": 0.33382350388958576,
+    "fhe_calls": 198,
+    "oob": 0,
+    "wall_s": 0.0027211660053581,
+    "fhe_s": 0.0004544527328107506
+   },
+   "seed_wall_s": 0.028943917015567422
+  },
+  "22": {
+   "after": {
+    "metric": 0.8691205970624798,
+    "max_error_all_calls": 0.8691205970624798,
+    "reported_max_error": 0.8691205970624798,
+    "verdict": "FAIL",
+    "worst_input": [
+     -1.1481382484923226,
+     -0.3211435293905207,
+     -0.4892849380807951,
+     0.07136450243211045,
+     0.02522475203517907,
+     0.3608935902058333,
+     0.3705561130168504,
+     1.1993343473196327
+    ],
+    "strategy": "cma_es",
+    "regime": "standard",
+    "n_trials_reported": 198,
+    "fhe_calls": 199,
+    "remeasure_events": 1,
+    "kind_counts": {
+     "boundary": 4,
+     "probe": 70,
+     "remeasure": 1,
+     "search": 124
+    },
+    "identity_ok": true,
+    "within_prereg_bound": true,
+    "within_n_trials": true,
+    "remeasure_documented": true,
+    "search_max_error": 0.8691205970624798,
+    "remeasured_error": 0.8691205970624798,
+    "oob": 0,
+    "wall_s": 0.012050207995343953,
+    "fhe_s": 0.0004871638957411051
+   },
+   "accounting": {
+    "metric": 0.9477668805305339,
+    "max_error_all_calls": 0.9477668805305339,
+    "reported_max_error": 0.9477668805305339,
+    "verdict": "FAIL",
+    "worst_input": [
+     -1.2033251907473907,
+     -1.0220759687028937,
+     -0.6631101971799764,
+     0.008267361136292117,
+     0.1325369757571262,
+     0.5565208783121434,
+     0.573973484043126,
+     0.9238196080734471
+    ],
+    "strategy": "cma_es",
+    "regime": "standard",
+    "n_trials_reported": 199,
+    "fhe_calls": 200,
+    "remeasure_events": 1,
+    "kind_counts": {
+     "probe": 70,
+     "remeasure": 1,
+     "search": 129
+    },
+    "identity_ok": true,
+    "within_prereg_bound": true,
+    "within_n_trials": true,
+    "remeasure_documented": true,
+    "search_max_error": 0.9477668805305339,
+    "remeasured_error": 0.9477668805305339,
+    "oob": 0,
+    "wall_s": 0.011319250013912097,
+    "fhe_s": 0.0004730050568468869
+   },
+   "baseline_n": 198,
+   "random": {
+    "metric": 0.248395255338556,
+    "fhe_calls": 198,
+    "oob": 0,
+    "wall_s": 0.0027110840019304305,
+    "fhe_s": 0.00045499272528104484
+   },
+   "corner": {
+    "metric": 0.33382350388958576,
+    "fhe_calls": 198,
+    "oob": 0,
+    "wall_s": 0.0027621249901130795,
+    "fhe_s": 0.0004667359753511846
+   },
+   "seed_wall_s": 0.02948116700281389
+  },
+  "23": {
+   "after": {
+    "metric": 0.9012287038830578,
+    "max_error_all_calls": 0.9012287038830578,
+    "reported_max_error": 0.9012287038830578,
+    "verdict": "FAIL",
+    "worst_input": [
+     -1.0350854562461862,
+     -1.3736422176095127,
+     -0.3044229487783826,
+     0.07568240582620878,
+     0.019985860020081195,
+     0.6704367305196188,
+     1.0036868720672794,
+     1.1892670446823088
+    ],
+    "strategy": "cma_es",
+    "regime": "standard",
+    "n_trials_reported": 198,
+    "fhe_calls": 199,
+    "remeasure_events": 1,
+    "kind_counts": {
+     "boundary": 4,
+     "probe": 70,
+     "remeasure": 1,
+     "search": 124
+    },
+    "identity_ok": true,
+    "within_prereg_bound": true,
+    "within_n_trials": true,
+    "remeasure_documented": true,
+    "search_max_error": 0.9012287038830578,
+    "remeasured_error": 0.9012287038830578,
+    "oob": 0,
+    "wall_s": 0.012326291005592793,
+    "fhe_s": 0.0004903771332465112
+   },
+   "accounting": {
+    "metric": 0.9012287038830578,
+    "max_error_all_calls": 0.9012287038830578,
+    "reported_max_error": 0.9012287038830578,
+    "verdict": "FAIL",
+    "worst_input": [
+     -1.0350854562461862,
+     -1.3736422176095127,
+     -0.3044229487783826,
+     0.07568240582620878,
+     0.019985860020081195,
+     0.6704367305196188,
+     1.0036868720672794,
+     1.1892670446823088
+    ],
+    "strategy": "cma_es",
+    "regime": "standard",
+    "n_trials_reported": 199,
+    "fhe_calls": 200,
+    "remeasure_events": 1,
+    "kind_counts": {
+     "probe": 70,
+     "remeasure": 1,
+     "search": 129
+    },
+    "identity_ok": true,
+    "within_prereg_bound": true,
+    "within_n_trials": true,
+    "remeasure_documented": true,
+    "search_max_error": 0.9012287038830578,
+    "remeasured_error": 0.9012287038830578,
+    "oob": 0,
+    "wall_s": 0.010871166014112532,
+    "fhe_s": 0.00046470921370200813
+   },
+   "baseline_n": 198,
+   "random": {
+    "metric": 0.19596725747926017,
+    "fhe_calls": 198,
+    "oob": 0,
+    "wall_s": 0.0027539159927982837,
+    "fhe_s": 0.000470666098408401
+   },
+   "corner": {
+    "metric": 0.33382350388958576,
+    "fhe_calls": 198,
+    "oob": 0,
+    "wall_s": 0.0028299579862505198,
+    "fhe_s": 0.00047878691111691296
+   },
+   "seed_wall_s": 0.029362791014136747
+  },
+  "24": {
+   "after": {
+    "metric": 0.8702288047396151,
+    "max_error_all_calls": 0.8702288047396151,
+    "reported_max_error": 0.8702288047396151,
+    "verdict": "FAIL",
+    "worst_input": [
+     -0.9534038110580391,
+     -0.8100089238530721,
+     -0.47065609108373596,
+     -0.18963099820441875,
+     0.26847560325971687,
+     0.48748189589550356,
+     0.35022618342934364,
+     1.7414136498277828
+    ],
+    "strategy": "cma_es",
+    "regime": "standard",
+    "n_trials_reported": 198,
+    "fhe_calls": 199,
+    "remeasure_events": 1,
+    "kind_counts": {
+     "boundary": 4,
+     "probe": 70,
+     "remeasure": 1,
+     "search": 124
+    },
+    "identity_ok": true,
+    "within_prereg_bound": true,
+    "within_n_trials": true,
+    "remeasure_documented": true,
+    "search_max_error": 0.8702288047396151,
+    "remeasured_error": 0.8702288047396151,
+    "oob": 0,
+    "wall_s": 0.012297792010940611,
+    "fhe_s": 0.0004815763095393777
+   },
+   "accounting": {
+    "metric": 0.8702288047396151,
+    "max_error_all_calls": 0.8702288047396151,
+    "reported_max_error": 0.8702288047396151,
+    "verdict": "FAIL",
+    "worst_input": [
+     -0.9534038110580391,
+     -0.8100089238530721,
+     -0.47065609108373596,
+     -0.18963099820441875,
+     0.26847560325971687,
+     0.48748189589550356,
+     0.35022618342934364,
+     1.7414136498277828
+    ],
+    "strategy": "cma_es",
+    "regime": "standard",
+    "n_trials_reported": 199,
+    "fhe_calls": 200,
+    "remeasure_events": 1,
+    "kind_counts": {
+     "probe": 70,
+     "remeasure": 1,
+     "search": 129
+    },
+    "identity_ok": true,
+    "within_prereg_bound": true,
+    "within_n_trials": true,
+    "remeasure_documented": true,
+    "search_max_error": 0.8702288047396151,
+    "remeasured_error": 0.8702288047396151,
+    "oob": 0,
+    "wall_s": 0.011945375008508563,
+    "fhe_s": 0.0005055500951129943
+   },
+   "baseline_n": 198,
+   "random": {
+    "metric": 0.27666880567288915,
+    "fhe_calls": 198,
+    "oob": 0,
+    "wall_s": 0.00296266601071693,
+    "fhe_s": 0.0004886600945610553
+   },
+   "corner": {
+    "metric": 0.2237685864950455,
+    "fhe_calls": 198,
+    "oob": 0,
+    "wall_s": 0.002818584005581215,
+    "fhe_s": 0.00046970791299827397
+   },
+   "seed_wall_s": 0.030716916982783005
+  },
+  "25": {
+   "after": {
+    "metric": 0.9011651879700946,
+    "max_error_all_calls": 0.9011651879700946,
+    "reported_max_error": 0.9011651879700946,
+    "verdict": "FAIL",
+    "worst_input": [
+     -1.407979558280369,
+     -0.6645014041740662,
+     -0.6832882586035607,
+     -0.432606610169187,
+     -0.027383017999947815,
+     0.62527182916171,
+     1.0877738676675892,
+     0.7685797108720094
+    ],
+    "strategy": "cma_es",
+    "regime": "standard",
+    "n_trials_reported": 198,
+    "fhe_calls": 199,
+    "remeasure_events": 1,
+    "kind_counts": {
+     "boundary": 4,
+     "probe": 70,
+     "remeasure": 1,
+     "search": 124
+    },
+    "identity_ok": true,
+    "within_prereg_bound": true,
+    "within_n_trials": true,
+    "remeasure_documented": true,
+    "search_max_error": 0.9011651879700946,
+    "remeasured_error": 0.9011651879700946,
+    "oob": 0,
+    "wall_s": 0.013583249994553626,
+    "fhe_s": 0.0005087917670607567
+   },
+   "accounting": {
+    "metric": 0.9011651879700946,
+    "max_error_all_calls": 0.9011651879700946,
+    "reported_max_error": 0.9011651879700946,
+    "verdict": "FAIL",
+    "worst_input": [
+     -1.407979558280369,
+     -0.6645014041740662,
+     -0.6832882586035607,
+     -0.432606610169187,
+     -0.027383017999947815,
+     0.62527182916171,
+     1.0877738676675892,
+     0.7685797108720094
+    ],
+    "strategy": "cma_es",
+    "regime": "standard",
+    "n_trials_reported": 199,
+    "fhe_calls": 200,
+    "remeasure_events": 1,
+    "kind_counts": {
+     "probe": 70,
+     "remeasure": 1,
+     "search": 129
+    },
+    "identity_ok": true,
+    "within_prereg_bound": true,
+    "within_n_trials": true,
+    "remeasure_documented": true,
+    "search_max_error": 0.9011651879700946,
+    "remeasured_error": 0.9011651879700946,
+    "oob": 0,
+    "wall_s": 0.012011208018520847,
+    "fhe_s": 0.0005514940712600946
+   },
+   "baseline_n": 198,
+   "random": {
+    "metric": 0.47077618067479826,
+    "fhe_calls": 198,
+    "oob": 0,
+    "wall_s": 0.0028853330004494637,
+    "fhe_s": 0.0004862468922510743
+   },
+   "corner": {
+    "metric": 0.33382350388958576,
+    "fhe_calls": 198,
+    "oob": 0,
+    "wall_s": 0.002888874994823709,
+    "fhe_s": 0.00048582907766103745
+   },
+   "seed_wall_s": 0.03210095898248255
+  },
+  "26": {
+   "after": {
+    "metric": 0.9513489914795615,
+    "max_error_all_calls": 0.9513489914795615,
+    "reported_max_error": 0.9513489914795615,
+    "verdict": "FAIL",
+    "worst_input": [
+     -1.049240692625232,
+     -0.9643924957762535,
+     -0.2737848862487215,
+     -0.0803943677705186,
+     0.11305471131784718,
+     0.43574076943774004,
+     0.6306456082371961,
+     1.4513918250856157
+    ],
+    "strategy": "cma_es",
+    "regime": "standard",
+    "n_trials_reported": 198,
+    "fhe_calls": 200,
+    "remeasure_events": 2,
+    "kind_counts": {
+     "boundary": 4,
+     "probe": 70,
+     "remeasure": 2,
+     "search": 124
+    },
+    "identity_ok": true,
+    "within_prereg_bound": true,
+    "within_n_trials": true,
+    "remeasure_documented": true,
+    "search_max_error": 0.9513489914795615,
+    "remeasured_error": 0.9513489914795615,
+    "oob": 0,
+    "wall_s": 0.01275016597355716,
+    "fhe_s": 0.0005057009402662516
+   },
+   "accounting": {
+    "metric": 0.9513489914795615,
+    "max_error_all_calls": 0.9513489914795615,
+    "reported_max_error": 0.9285610545882028,
+    "verdict": "FAIL",
+    "worst_input": [
+     -1.5764164113931962,
+     -0.9037706804879702,
+     -0.3688626650584301,
+     -0.054573446287960015,
+     0.04066227742097256,
+     0.3758175866851928,
+     0.5372459014738853,
+     1.0724759299539357
+    ],
+    "strategy": "cma_es",
+    "regime": "standard",
+    "n_trials_reported": 199,
+    "fhe_calls": 200,
+    "remeasure_events": 1,
+    "kind_counts": {
+     "probe": 70,
+     "remeasure": 1,
+     "search": 129
+    },
+    "identity_ok": true,
+    "within_prereg_bound": true,
+    "within_n_trials": true,
+    "remeasure_documented": true,
+    "search_max_error": 0.9285610545882028,
+    "remeasured_error": 0.9285610545882028,
+    "oob": 0,
+    "wall_s": 0.011480582994408906,
+    "fhe_s": 0.0004833709099330008
+   },
+   "baseline_n": 198,
+   "random": {
+    "metric": 0.2516327718007136,
+    "fhe_calls": 198,
+    "oob": 0,
+    "wall_s": 0.002793624997138977,
+    "fhe_s": 0.00046779707190580666
+   },
+   "corner": {
+    "metric": 0.33382350388958576,
+    "fhe_calls": 198,
+    "oob": 0,
+    "wall_s": 0.0027750000008381903,
+    "fhe_s": 0.0004655019147321582
+   },
+   "seed_wall_s": 0.03045458300039172
+  },
+  "27": {
+   "after": {
+    "metric": 0.8732768955265723,
+    "max_error_all_calls": 0.8732768955265723,
+    "reported_max_error": 0.8732768955265723,
+    "verdict": "FAIL",
+    "worst_input": [
+     -1.2014697551784204,
+     -1.1398933438470165,
+     -0.4963348212417824,
+     -0.658882412342598,
+     0.05135183252120565,
+     0.20686419790937452,
+     0.4786598956976714,
+     1.0007452877321505
+    ],
+    "strategy": "cma_es",
+    "regime": "standard",
+    "n_trials_reported": 198,
+    "fhe_calls": 199,
+    "remeasure_events": 1,
+    "kind_counts": {
+     "boundary": 4,
+     "probe": 70,
+     "remeasure": 1,
+     "search": 124
+    },
+    "identity_ok": true,
+    "within_prereg_bound": true,
+    "within_n_trials": true,
+    "remeasure_documented": true,
+    "search_max_error": 0.8732768955265723,
+    "remeasured_error": 0.8732768955265723,
+    "oob": 0,
+    "wall_s": 0.013074582995614037,
+    "fhe_s": 0.000497533765155822
+   },
+   "accounting": {
+    "metric": 0.8732768955265723,
+    "max_error_all_calls": 0.8732768955265723,
+    "reported_max_error": 0.8732768955265723,
+    "verdict": "FAIL",
+    "worst_input": [
+     -1.2014697551784204,
+     -1.1398933438470165,
+     -0.4963348212417824,
+     -0.658882412342598,
+     0.05135183252120565,
+     0.20686419790937452,
+     0.4786598956976714,
+     1.0007452877321505
+    ],
+    "strategy": "cma_es",
+    "regime": "standard",
+    "n_trials_reported": 199,
+    "fhe_calls": 200,
+    "remeasure_events": 1,
+    "kind_counts": {
+     "probe": 70,
+     "remeasure": 1,
+     "search": 129
+    },
+    "identity_ok": true,
+    "within_prereg_bound": true,
+    "within_n_trials": true,
+    "remeasure_documented": true,
+    "search_max_error": 0.8732768955265723,
+    "remeasured_error": 0.8732768955265723,
+    "oob": 0,
+    "wall_s": 0.011260208004387096,
+    "fhe_s": 0.00046729398309253156
+   },
+   "baseline_n": 198,
+   "random": {
+    "metric": 0.22183295511651477,
+    "fhe_calls": 198,
+    "oob": 0,
+    "wall_s": 0.002741124975727871,
+    "fhe_s": 0.00046125325025059283
+   },
+   "corner": {
+    "metric": 0.2237685864950455,
+    "fhe_calls": 198,
+    "oob": 0,
+    "wall_s": 0.002730917010921985,
+    "fhe_s": 0.00045549284550361335
+   },
+   "seed_wall_s": 0.03041300000040792
+  },
+  "28": {
+   "after": {
+    "metric": 0.950070431611397,
+    "max_error_all_calls": 0.950070431611397,
+    "reported_max_error": 0.950070431611397,
+    "verdict": "FAIL",
+    "worst_input": [
+     -1.0418749396359104,
+     -1.1661458023773275,
+     -0.46407981739895054,
+     -0.11927712984459678,
+     0.10878433764113954,
+     0.42414516944702,
+     1.061315608726896,
+     1.425883429068827
+    ],
+    "strategy": "cma_es",
+    "regime": "standard",
+    "n_trials_reported": 198,
+    "fhe_calls": 199,
+    "remeasure_events": 1,
+    "kind_counts": {
+     "boundary": 4,
+     "probe": 70,
+     "remeasure": 1,
+     "search": 124
+    },
+    "identity_ok": true,
+    "within_prereg_bound": true,
+    "within_n_trials": true,
+    "remeasure_documented": true,
+    "search_max_error": 0.950070431611397,
+    "remeasured_error": 0.950070431611397,
+    "oob": 0,
+    "wall_s": 0.011627625004621223,
+    "fhe_s": 0.00047883548540994525
+   },
+   "accounting": {
+    "metric": 0.950070431611397,
+    "max_error_all_calls": 0.950070431611397,
+    "reported_max_error": 0.950070431611397,
+    "verdict": "FAIL",
+    "worst_input": [
+     -1.0418749396359104,
+     -1.1661458023773275,
+     -0.46407981739895054,
+     -0.11927712984459678,
+     0.10878433764113954,
+     0.42414516944702,
+     1.061315608726896,
+     1.425883429068827
+    ],
+    "strategy": "cma_es",
+    "regime": "standard",
+    "n_trials_reported": 199,
+    "fhe_calls": 200,
+    "remeasure_events": 1,
+    "kind_counts": {
+     "probe": 70,
+     "remeasure": 1,
+     "search": 129
+    },
+    "identity_ok": true,
+    "within_prereg_bound": true,
+    "within_n_trials": true,
+    "remeasure_documented": true,
+    "search_max_error": 0.950070431611397,
+    "remeasured_error": 0.950070431611397,
+    "oob": 0,
+    "wall_s": 0.010901917004957795,
+    "fhe_s": 0.0004708796623162925
+   },
+   "baseline_n": 198,
+   "random": {
+    "metric": 0.27617518979474703,
+    "fhe_calls": 198,
+    "oob": 0,
+    "wall_s": 0.0029159999976400286,
+    "fhe_s": 0.000493619911139831
+   },
+   "corner": {
+    "metric": 0.33382350388958576,
+    "fhe_calls": 198,
+    "oob": 0,
+    "wall_s": 0.0027376670041121542,
+    "fhe_s": 0.0004624979628715664
+   },
+   "seed_wall_s": 0.028746833006152883
+  },
+  "29": {
+   "after": {
+    "metric": 0.9024186319756343,
+    "max_error_all_calls": 0.9024186319756343,
+    "reported_max_error": 0.9024186319756343,
+    "verdict": "FAIL",
+    "worst_input": [
+     -1.065380166874532,
+     -0.4623341850112332,
+     -0.7328963014428422,
+     -0.38459583844184164,
+     0.06797050746800376,
+     0.36038114169673047,
+     0.45984544541066097,
+     1.1491797335342517
+    ],
+    "strategy": "cma_es",
+    "regime": "standard",
+    "n_trials_reported": 198,
+    "fhe_calls": 199,
+    "remeasure_events": 1,
+    "kind_counts": {
+     "boundary": 4,
+     "probe": 70,
+     "remeasure": 1,
+     "search": 124
+    },
+    "identity_ok": true,
+    "within_prereg_bound": true,
+    "within_n_trials": true,
+    "remeasure_documented": true,
+    "search_max_error": 0.9024186319756343,
+    "remeasured_error": 0.9024186319756343,
+    "oob": 0,
+    "wall_s": 0.012790125008905306,
+    "fhe_s": 0.0005106212629470974
+   },
+   "accounting": {
+    "metric": 0.9131685845654225,
+    "max_error_all_calls": 0.9131685845654225,
+    "reported_max_error": 0.9131685845654225,
+    "verdict": "FAIL",
+    "worst_input": [
+     -1.068446779051343,
+     -0.4331026713632946,
+     -0.5882487525951579,
+     0.06475476274137926,
+     0.020157762322956296,
+     0.4858344071085343,
+     0.5012013701494973,
+     1.1994129710906893
+    ],
+    "strategy": "cma_es",
+    "regime": "standard",
+    "n_trials_reported": 199,
+    "fhe_calls": 200,
+    "remeasure_events": 1,
+    "kind_counts": {
+     "probe": 70,
+     "remeasure": 1,
+     "search": 129
+    },
+    "identity_ok": true,
+    "within_prereg_bound": true,
+    "within_n_trials": true,
+    "remeasure_documented": true,
+    "search_max_error": 0.9131685845654225,
+    "remeasured_error": 0.9131685845654225,
+    "oob": 0,
+    "wall_s": 0.011573625000892207,
+    "fhe_s": 0.0004718838899862021
+   },
+   "baseline_n": 198,
+   "random": {
+    "metric": 0.3056275124067875,
+    "fhe_calls": 198,
+    "oob": 0,
+    "wall_s": 0.0028005420172121376,
+    "fhe_s": 0.0004720859869848937
+   },
+   "corner": {
+    "metric": 0.33382350388958576,
+    "fhe_calls": 198,
+    "oob": 0,
+    "wall_s": 0.002738584007602185,
+    "fhe_s": 0.00046333292266353965
+   },
+   "seed_wall_s": 0.030578959005651996
+  },
+  "30": {
+   "after": {
+    "metric": 0.8042744189393555,
+    "max_error_all_calls": 0.8042744189393555,
+    "reported_max_error": 0.8042744189393555,
+    "verdict": "FAIL",
+    "worst_input": [
+     -1.0112002512860185,
+     -0.27705612214173064,
+     -0.571154728726627,
+     -0.20635474108105575,
+     0.5869331933455115,
+     0.259517460759324,
+     1.348442185730334,
+     1.5530446257851462
+    ],
+    "strategy": "cma_es",
+    "regime": "standard",
+    "n_trials_reported": 198,
+    "fhe_calls": 199,
+    "remeasure_events": 1,
+    "kind_counts": {
+     "boundary": 4,
+     "probe": 70,
+     "remeasure": 1,
+     "search": 124
+    },
+    "identity_ok": true,
+    "within_prereg_bound": true,
+    "within_n_trials": true,
+    "remeasure_documented": true,
+    "search_max_error": 0.8042744189393555,
+    "remeasured_error": 0.8042744189393555,
+    "oob": 0,
+    "wall_s": 0.012173417024314404,
+    "fhe_s": 0.00047795416321605444
+   },
+   "accounting": {
+    "metric": 0.8042744189393555,
+    "max_error_all_calls": 0.8042744189393555,
+    "reported_max_error": 0.8042744189393555,
+    "verdict": "FAIL",
+    "worst_input": [
+     -1.0112002512860185,
+     -0.27705612214173064,
+     -0.571154728726627,
+     -0.20635474108105575,
+     0.5869331933455115,
+     0.259517460759324,
+     1.348442185730334,
+     1.5530446257851462
+    ],
+    "strategy": "cma_es",
+    "regime": "standard",
+    "n_trials_reported": 199,
+    "fhe_calls": 200,
+    "remeasure_events": 1,
+    "kind_counts": {
+     "probe": 70,
+     "remeasure": 1,
+     "search": 129
+    },
+    "identity_ok": true,
+    "within_prereg_bound": true,
+    "within_n_trials": true,
+    "remeasure_documented": true,
+    "search_max_error": 0.8042744189393555,
+    "remeasured_error": 0.8042744189393555,
+    "oob": 0,
+    "wall_s": 0.011198416992556304,
+    "fhe_s": 0.0004649152106139809
+   },
+   "baseline_n": 198,
+   "random": {
+    "metric": 0.23512426307579418,
+    "fhe_calls": 198,
+    "oob": 0,
+    "wall_s": 0.0027858749963343143,
+    "fhe_s": 0.0004746160702779889
+   },
+   "corner": {
+    "metric": 0.14166563029947388,
+    "fhe_calls": 198,
+    "oob": 0,
+    "wall_s": 0.002769708022242412,
+    "fhe_s": 0.0004655019729398191
+   },
+   "seed_wall_s": 0.02947779101668857
+  }
+ },
+ "status": "complete",
+ "sup": 1.0,
+ "end": {
+  "guarded": {
+   "git_head": "56b6d4149765d783657cb3441e5bae70d8ac8deb",
+   "sha256": {
+    "fhe_oracle/core.py": "24979925df7d0a090e170f9daf1e9705bd1fd115628688adb01dc81fd9a4e143",
+    "fhe_oracle/autoconfig.py": "853c5b1fc158e7f694a9e26825dd4f09631fded8eaaeb244d9fb812ff7431090",
+    "benchmarks/study_a_boundary_confirmation.py": "18b64e61e2c90dc51bc536330dd57fc950650ee7575a11200ea7d273245679d5"
+   }
+  },
+  "prereg": {
+   "path": "benchmarks/preregistration_2026-09-15.md",
+   "commit": "962aab31e4239d074130a8f80394dac3e2731c1d",
+   "expected_sha256": "912da47075386a07163dba517dfc06b4dfa9d24461fbb587b30e1c924a694386",
+   "file_sha256": "912da47075386a07163dba517dfc06b4dfa9d24461fbb587b30e1c924a694386",
+   "committed_sha256": "912da47075386a07163dba517dfc06b4dfa9d24461fbb587b30e1c924a694386",
+   "ok": true
+  },
+  "environment": {
+   "python": "3.13.7",
+   "platform": "macOS-26.6.2-arm64-arm-64bit-Mach-O",
+   "cpu_count": 14,
+   "loadavg": [
+    10.53857421875,
+    11.857421875,
+    13.07421875
+   ],
+   "packages": {
+    "tenseal": "0.3.16",
+    "cma": "4.4.4",
+    "numpy": "2.4.6",
+    "scipy": "1.17.1"
+   },
+   "recorded_sha256": {
+    "benchmarks/tenseal_circuits.py": "ed57ab2b964a85b44e2de3cfcf2fc4b68b53b3ab3926022c3f910cf8aa929f63",
+    "fhe_oracle/adapters/tenseal_adapter.py": "e6f904fbf5e17668318e303851b63f1f7639efb91bb802ed4982a5505847c169",
+    "fhe_oracle/fitness.py": "22a68f042aa517fc54fc0c1f5dd5040579daf527ea54d51621004b83b1a59db9",
+    "fhe_oracle/preactivation.py": "53b8f9b08adda2dd1b59bea328da00f160ceae66529c538e057f53f29715051d",
+    "fhe_oracle/diagnostics.py": "be596db4096c3f344486b5ce638a02c3e2fe60cf052aae2e8d723207a781a261"
+   },
+   "utc": "2026-09-15T11:08:22+00:00"
+  }
+ }
+}

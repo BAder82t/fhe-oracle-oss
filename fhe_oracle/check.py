@@ -13,8 +13,9 @@ from dataclasses import dataclass
 from typing import Any, Callable, Optional
 
 from .autoconfig import AutoOracle
-from .core import OracleResult, ShrinkResult
+from .core import ShrinkResult
 from .diagnostics import OperationStep, localize_fault, per_op_trace
+from .preactivation import PreactivationResult
 from .report import to_json, to_markdown
 
 
@@ -24,7 +25,7 @@ class CheckResult:
 
     Attributes
     ----------
-    oracle_result : OracleResult
+    oracle_result : OracleResult or PreactivationResult
         The underlying AutoOracle result (has ``.regime``/``.strategy_used``).
     shrink_result : ShrinkResult, optional
         Set when the witness was shrunk (FAIL + ``shrink=True`` + a
@@ -82,7 +83,9 @@ def check(
         bounds=input_bounds,
         **autooracle_kwargs,
     )
-    result: OracleResult = oracle.run(n_trials=n_trials, seed=seed, threshold=threshold)
+    result = oracle.run(n_trials=n_trials, seed=seed, threshold=threshold)
+    if isinstance(result, PreactivationResult) and result.verdict is None:
+        result.apply_threshold(threshold)  # defensive: a PreactivationResult without a verdict
 
     shrink_result: Optional[ShrinkResult] = None
     localized: Optional[OperationStep] = None

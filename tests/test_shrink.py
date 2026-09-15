@@ -135,6 +135,24 @@ def test_shrink_result_still_fails_on_noisy_backend(seed):
     assert shrunk.n_evals <= 120
 
 
+@pytest.mark.parametrize("seed", range(10))
+def test_shrunk_witness_reproduces_on_noisy_backend(seed):
+    # A witness confirmed by a single measurement at the boundary fails
+    # replay about half the time; replays should rarely drop below threshold.
+    rng = np.random.default_rng(seed)
+
+    def fhe(x):
+        return 0.01 * _square(x) + rng.normal(0.0, 2e-4)
+
+    oracle = FHEOracle(plaintext_fn=lambda x: 0.0, fhe_fn=fhe, input_dim=3,
+                       input_bounds=[(-2.0, 2.0)] * 3, seed=seed)
+    result = oracle.run(n_trials=100, threshold=0.01)
+    shrunk = oracle.shrink(result, max_evals=120)
+    replays = [abs(fhe(shrunk.shrunk_input)) for _ in range(20)]
+    assert sum(r < result.threshold for r in replays) <= 4
+    assert shrunk.n_evals <= 120
+
+
 def test_shrink_witness_already_at_reference_is_noop():
     oracle = FHEOracle(
         plaintext_fn=lambda x: 0.0,

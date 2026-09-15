@@ -165,3 +165,41 @@ def test_validation_errors():
             plaintext_fn=lambda x: 0.0, fhe_fn=lambda x: 0.0,
             input_bounds=[(-1, 1)] * 5,  # wrong d
         )
+
+
+# ---------------------------------------------------------------------
+# Verdict
+# ---------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("k", [1, 2])
+def test_run_threshold_sets_verdict_and_worst_input(k):
+    W = np.array([[1.0, 0.5, -0.3, 0.2], [0.2, -0.4, 0.6, 0.1]])[:k]
+    b = np.array([0.1, -0.2])[:k]
+
+    def plain(x):
+        return np.array([_sigmoid(z) for z in W @ np.asarray(x) + b])
+
+    def fhe(x):
+        return np.array([0.5 + z / 4 - z ** 3 / 48 for z in W @ np.asarray(x) + b])
+
+    pre = PreactivationOracle(W=W, b=b, plaintext_fn=plain, fhe_fn=fhe,
+                              input_bounds=[(-3.0, 3.0)] * 4)
+    for threshold, verdict in [(0.05, "FAIL"), (100.0, "PASS")]:
+        r = pre.run(budget=40, seeds=[1], threshold=threshold)[0]
+        assert r.verdict == verdict
+        assert r.threshold == threshold
+        assert r.worst_input == r.x
+
+
+def test_run_without_threshold_leaves_verdict_unset():
+    W = np.array([[1.0, 0.5, -0.3, 0.2]])
+    pre = PreactivationOracle(
+        W=W, b=np.array([0.1]),
+        plaintext_fn=lambda x: 0.0, fhe_fn=lambda x: float(np.sum(np.asarray(x) ** 2)),
+        input_bounds=[(-1.0, 1.0)] * 4,
+    )
+    r = pre.run(budget=20, seeds=[1])[0]
+    assert r.verdict is None and r.threshold is None
+    r.apply_threshold(0.5)
+    assert r.verdict == ("PASS" if r.max_error < 0.5 else "FAIL")

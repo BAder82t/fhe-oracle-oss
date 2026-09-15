@@ -39,7 +39,13 @@ from typing import Any, Callable
 
 import numpy as np
 
-from .fitness import evaluate_outputs, absolute_error, finite_score
+from .fitness import (
+    EvaluationError,
+    absolute_error,
+    evaluate_outputs,
+    finite_score,
+    validated_outputs,
+)
 
 
 class MultiOutputMode(Enum):
@@ -87,15 +93,34 @@ class MultiOutputFitness:
         self.mode = mode
         self.rank_weight = float(rank_weight)
         self.margin_bonus = float(margin_bonus)
+        self.reset_observations()
+
+    def reset_observations(self) -> None:
+        """Clear the largest error and class flip recorded by ``score``."""
+        self.max_abs_seen = float("-inf")
+        self.flip_seen = False
 
     def __call__(self, x: Any) -> float:
         return self.score(x)
 
     def score(self, x: Any) -> float:
         """Compute fitness; reject failed or incompatible model outputs."""
-        p, f = evaluate_outputs(self.plaintext_fn, self.fhe_fn, x)
-        absolute_error(p, f)
+        return self._score_outputs(*evaluate_outputs(self.plaintext_fn, self.fhe_fn, x))
+
+    def score_with_output(self, x: Any, fhe_value: Any) -> float:
+        """Score ``x`` against an FHE output computed elsewhere, e.g. in a batch."""
+        try:
+            plain = self.plaintext_fn(x)
+        except Exception as exc:
+            raise EvaluationError(f"model evaluation failed: {exc}") from exc
+        return self._score_outputs(*validated_outputs(plain, fhe_value))
+
+    def _score_outputs(self, p: np.ndarray, f: np.ndarray) -> float:
+        err = float(absolute_error(p, f).max())
         p, f = p.ravel(), f.ravel()
+        self.max_abs_seen = max(self.max_abs_seen, err)
+        if p.size > 1 and int(np.argmax(p)) != int(np.argmax(f)):
+            self.flip_seen = True
         if self.mode == MultiOutputMode.MAX_ABSOLUTE:
             return self._max_absolute(p, f)
         if self.mode == MultiOutputMode.RANK_INVERSION:

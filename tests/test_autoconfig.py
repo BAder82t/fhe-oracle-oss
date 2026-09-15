@@ -15,7 +15,6 @@ from fhe_oracle.autoconfig import (
     classify_landscape,
 )
 
-
 # --- classify_landscape --------------------------------------------------
 
 
@@ -226,19 +225,23 @@ def test_auto_oracle_standard_runs():
 
 
 def test_auto_oracle_budget_accounting():
-    """Caller asks for n_trials total -- probes are subtracted."""
+    """Caller asks for n_trials total -- probes count toward it and toward result.n_trials."""
+    calls = {"n": 0}
+
+    def fhe_fn(x):
+        calls["n"] += 1
+        return float(np.sum(np.asarray(x)))
+
     oracle = AutoOracle(
         plaintext_fn=lambda x: 0.0,
-        fhe_fn=lambda x: float(np.sum(np.asarray(x))),
+        fhe_fn=fhe_fn,
         bounds=[(-1.0, 1.0)] * 3,
         n_probes=30,
     )
     result = oracle.run(n_trials=80, seed=5)
-    # probe run uses 30 evals; remaining 50 go to the inner search.
-    # OracleResult.n_trials only counts inner-oracle evals. CMA-ES may
-    # overshoot by at most one population (~7 at d=3) because it only
-    # checks the budget after emitting a full generation.
-    assert result.n_trials <= 50 + 10
+    # result.n_trials excludes only the one or two re-measurements.
+    assert calls["n"] <= 80
+    assert calls["n"] - 2 <= result.n_trials <= calls["n"] - 1
 
 
 def test_auto_oracle_preactivation_dispatch():
@@ -313,7 +316,7 @@ def test_auto_oracle_low_rank_structure_dispatch():
         bounds=[(-1.0, 1.0)] * d,
         n_probes=30,
     )
-    result = oracle.run(n_trials=150, seed=2)
+    result = oracle.run(n_trials=8100, seed=2)  # the charged diagnostic needs 4,000 of it
     assert result.strategy_used == "separable_cma_es"
     assert result.regime == Regime.LOW_RANK_STRUCTURE.value
 
@@ -347,7 +350,7 @@ def test_auto_oracle_low_rank_structure_respects_user_separable_override(monkeyp
         n_probes=30,
         separable=False,  # explicit user override
     )
-    result = oracle.run(n_trials=150, seed=2)
+    result = oracle.run(n_trials=8100, seed=2)  # the charged diagnostic needs 4,000 of it
     assert result.regime == Regime.LOW_RANK_STRUCTURE.value
     assert captured["separable"] is False
 

@@ -16,7 +16,6 @@ import sys
 
 import pytest
 
-
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 
@@ -24,7 +23,7 @@ def _has_concrete_ml() -> bool:
     try:
         importlib.import_module("concrete.ml")
         return True
-    except Exception:
+    except Exception:  # noqa: BLE001 - optional-dependency probe
         return False
 
 

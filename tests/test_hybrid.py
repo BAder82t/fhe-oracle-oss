@@ -96,11 +96,10 @@ def test_union_fail_when_oracle_fails_empirical_passes():
 def test_union_fail_when_empirical_fails_oracle_passes():
     """Oracle PASSes (benign circuit), empirical FAILs (planted bug in data).
 
-    Plaintext and FHE match except on inputs near a specific planted point.
-    Since the oracle searches [-1, 1]^3 and the plant is at [10,10,10],
-    oracle won't find it; empirical samples directly from data and will.
+    Plaintext and FHE match except within 0.05 of an in-box planted point;
+    the oracle misses that tiny ball, empirical samples it directly.
     """
-    plant = np.array([10.0, 10.0, 10.0])
+    plant = np.array([0.6, -0.6, 0.6])
     data = np.tile(plant, (20, 1))
 
     def plain_fn(x):
@@ -108,8 +107,7 @@ def test_union_fail_when_empirical_fails_oracle_passes():
 
     def fhe_fn(x):
         xa = np.asarray(x)
-        # Plant-local divergence. Oracle box is [-1, 1]^3 so it misses.
-        if np.linalg.norm(xa - plant) < 5.0:
+        if np.linalg.norm(xa - plant) < 0.05:
             return plain_fn(x) + 0.5
         return plain_fn(x)
 
@@ -206,12 +204,12 @@ def test_separate_budgets_honoured():
 
 def test_source_tracks_larger_max_error():
     """When empirical's max_error exceeds oracle's, source='empirical'."""
-    plant = np.array([10.0, 10.0, 10.0])
+    plant = np.array([0.6, -0.6, 0.6])  # inside the box; the oracle misses it
     data = np.tile(plant, (5, 1))
 
     def fhe_fn(x):
         xa = np.asarray(x)
-        if np.linalg.norm(xa - plant) < 5.0:
+        if np.linalg.norm(xa - plant) < 0.05:
             return float(np.sum(xa ** 2)) + 99.0  # huge divergence
         return float(np.sum(xa ** 2))
 
@@ -231,3 +229,27 @@ def test_source_tracks_larger_max_error():
     assert res.source == "empirical"
     assert res.max_error == res.empirical_result.max_error
     assert res.max_error >= 99.0
+
+
+# --- Witness stays in the stated domain ---
+
+def test_empirical_witness_stays_inside_input_bounds():
+    """Jittered data near the box edge must not yield an out-of-box FAIL."""
+    d = 4
+
+    def fhe_fn(x):
+        return _identity(x) + 0.1 * float(np.max(np.abs(np.asarray(x))))
+
+    res = run_hybrid(
+        plaintext_fn=_identity,
+        fhe_fn=fhe_fn,
+        input_dim=d,
+        input_bounds=[(-1.0, 1.0)] * d,
+        threshold=0.105,  # in-box maximum divergence is 0.1
+        oracle_budget=60,
+        data=np.full((20, d), 0.98),
+        empirical_budget=200,
+    )
+    assert np.all(np.abs(np.asarray(res.worst_input)) <= 1.0)
+    assert res.empirical_result.max_error <= 0.1 + 1e-12
+    assert res.union_verdict == "PASS"

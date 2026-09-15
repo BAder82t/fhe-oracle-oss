@@ -357,12 +357,12 @@ class TracingTenSEALFn:
                 if callable(v):
                     try:
                         return float(v())
-                    except Exception:
+                    except Exception:  # noqa: BLE001, S112 - optional scale attribute on a display-only trace field
                         continue
                 if v is not None:
                     try:
                         return float(v)
-                    except Exception:
+                    except Exception:  # noqa: BLE001, S112 - optional scale attribute on a display-only trace field
                         continue
             return None
 

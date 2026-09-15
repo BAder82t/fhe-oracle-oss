@@ -22,12 +22,13 @@ pytestmark = pytest.mark.skipif(
 
 
 def _load():
-    from fhe_oracle.adapters.tenseal_adapter import TenSEALContext
     from tenseal_circuits import (
         _circuit2_plaintext_fn,
         build_tenseal_circuit2,
         make_tenseal_circuit2_fhe_fn,
     )
+
+    from fhe_oracle.adapters.tenseal_adapter import TenSEALContext
     return {
         "TenSEALContext": TenSEALContext,
         "plaintext": _circuit2_plaintext_fn,

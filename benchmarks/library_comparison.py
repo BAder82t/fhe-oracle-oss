@@ -232,17 +232,12 @@ def concrete_ml_lr_d8(weights: np.ndarray, bias: float):
     y_train = (X_train @ weights + bias > 0).astype(int)
     model = CMLLR(n_bits=8)
     model.fit(X_train, y_train)
-    try:
-        model.compile(X_train)
-    except Exception:
-        return None
+    model.compile(X_train)  # a compile failure must not look like "not implemented"
 
     def fhe_fn(x):
+        # Backend errors propagate; returning 0.0 would score a failure as a divergence.
         x_arr = np.asarray(x, dtype=np.float64).reshape(1, -1)
-        try:
-            return float(model.predict_proba(x_arr, fhe="execute")[0][1])
-        except Exception:
-            return 0.0
+        return float(model.predict_proba(x_arr, fhe="execute")[0][1])
 
     return fhe_fn
 
@@ -579,18 +574,12 @@ def concrete_squared_dot(weights: np.ndarray, bias: float):
     rng = np.random.default_rng(0)
     input_set = [np.round(rng.uniform(-3.0, 3.0, 8) * s).astype(np.int64)
                  for _ in range(50)]
-    try:
-        compiled = circuit.compile(input_set)
-    except Exception:
-        return None
+    compiled = circuit.compile(input_set)
 
     def fhe_fn(x):
+        # Backend errors propagate; returning 0.0 would score a failure as a divergence.
         xi = np.round(np.asarray(x, dtype=np.float64).ravel() * s).astype(np.int64)
-        try:
-            val = int(compiled.encrypt_run_decrypt(xi))
-        except Exception:
-            return 0.0
-        return float(val) / (s ** 4)
+        return float(int(compiled.encrypt_run_decrypt(xi))) / (s ** 4)
     return fhe_fn
 
 
@@ -751,7 +740,7 @@ def run_one(library_name: str, library_version: str,
             circuit=circuit_name,
             seed=seed,
             verdict=f"ERROR: {str(exc)[:60]}",
-            max_error=0.0,
+            max_error=float("nan"),  # no measurement; 0.0 would read as a clean PASS
             regime="-",
             strategy_used="-",
             evals=counter["n"],
@@ -898,6 +887,10 @@ def main() -> int:
         print(f"{lib:15s} {ver:12s} {fail_rate*100:>9.0f}% "
               f"{med_max:>18.3e} {med_t:>11.1f}s")
 
+    n_errors = sum(1 for r in results if r.verdict.startswith("ERROR"))
+    if n_errors:
+        print(f"\n{n_errors} run(s) errored (max_error=nan); results are incomplete.")
+        return 2
     return 0
 
 

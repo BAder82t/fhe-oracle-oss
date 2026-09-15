@@ -5,10 +5,10 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from fhe_oracle import FHEOracle
 from fhe_oracle.adaptive import AdaptiveBudget, AdaptiveConfig
-
 
 # --- AdaptiveBudget unit tests ----------------------------------------
 
@@ -152,3 +152,34 @@ def test_adaptive_no_regression_on_standard():
         vanilla.append(v.max_error)
         adaptive.append(a.max_error)
     assert np.mean(adaptive) >= np.mean(vanilla) * 0.9
+
+
+def test_failed_budget_extension_warns_and_is_not_counted(monkeypatch):
+    # If pycma rejects the new maxfevals, the extension must not be reported.
+    import cma
+
+    from fhe_oracle import FHEOracle
+    from fhe_oracle.adaptive import AdaptiveBudget
+
+    monkeypatch.setattr(AdaptiveBudget, "should_extend", lambda self: True)
+    monkeypatch.setattr(AdaptiveBudget, "should_stop", lambda self: False)
+    monkeypatch.setattr(AdaptiveBudget, "should_switch", lambda self: False)
+    real_set = cma.CMAOptions.set
+
+    def failing_set(self, dic, *args, **kwargs):
+        if isinstance(dic, dict) and set(dic) == {"maxfevals"}:
+            raise ValueError("maxfevals is read-only")
+        return real_set(self, dic, *args, **kwargs)
+
+    monkeypatch.setattr(cma.CMAOptions, "set", failing_set)
+
+    def sq(x):
+        return float(sum(v * v for v in x))
+
+    # Varying divergence: a flat landscape makes pycma stop before the budget.
+    oracle = FHEOracle(sq, lambda x: sq(x) * (1.0 + 1e-3), input_dim=2,
+                       input_bounds=[(-1.0, 1.0)] * 2, seed=0, adaptive=True)
+    with pytest.warns(RuntimeWarning, match="extend"):
+        result = oracle.run(n_trials=40, threshold=1.0)
+    assert result.adaptive_extensions_used == 0
+

@@ -28,6 +28,9 @@ Example
         return result
 
     adapter = SealAdapter(fhe_fn=square_fn, n_features=4, mult_depth=2)
+
+Pass ``output_length=1`` when the program's result is a scalar in slot 0; the
+default ``n_features`` suits element-wise programs. Unit tests use a fake ``seal`` module only.
 """
 
 from __future__ import annotations
@@ -47,14 +50,15 @@ class SealAdapter(FHEAdapter):
         mult_depth: int = 2,
         scale_bits: int = 40,
         poly_modulus_degree: int = 8192,
+        output_length: int | None = None,
     ) -> None:
         try:
             import seal  # noqa: F401
-        except ImportError:
+        except ImportError as exc:
             raise RuntimeError(
                 "seal-python is not installed. See this module's docstring "
                 "for build instructions."
-            )
+            ) from exc
 
         self._fhe_fn = fhe_fn
         self._n_features = n_features
@@ -71,6 +75,12 @@ class SealAdapter(FHEAdapter):
             self._relin_keys,
         ) = self._setup_context(poly_modulus_degree, mult_depth, scale_bits)
 
+        self._output_length = n_features if output_length is None else output_length
+        if not 1 <= self._output_length <= self._slot_count:
+            raise ValueError(
+                f"output_length must be in [1, {self._slot_count}], got {self._output_length}"
+            )
+
     def encrypt(self, x: list[float]) -> Any:
         padded = list(x) + [0.0] * max(0, self._slot_count - len(x))
         plain = self._encoder.encode(padded, self._scale)
@@ -79,7 +89,7 @@ class SealAdapter(FHEAdapter):
     def decrypt(self, ciphertext: Any) -> list[float]:
         plain = self._decryptor.decrypt(ciphertext)
         values = self._encoder.decode(plain)
-        return [v.real for v in values[: self._n_features]]
+        return [v.real for v in values[: self._output_length]]
 
     def run_fhe_program(self, ciphertext: Any) -> Any:
         return self._fhe_fn(self._evaluator, self._relin_keys, ciphertext)
@@ -88,13 +98,13 @@ class SealAdapter(FHEAdapter):
         try:
             budget = self._decryptor.invariant_noise_budget(ciphertext)
             return float(budget)
-        except Exception:
+        except Exception:  # noqa: BLE001, S110 - metadata-only fallback; max_error and verdict unaffected
             pass
         try:
             ctx_data = self._context.get_context_data(ciphertext.parms_id())
             chain_index = ctx_data.chain_index()
             return float(chain_index * self._scale_bits)
-        except Exception:
+        except Exception:  # noqa: BLE001, S110 - metadata-only fallback; max_error and verdict unaffected
             pass
         return float(self._mult_depth * self._scale_bits)
 
@@ -106,7 +116,7 @@ class SealAdapter(FHEAdapter):
             ).chain_index()
             remaining = ctx_data.chain_index()
             return int(total - remaining)
-        except Exception:
+        except Exception:  # noqa: BLE001 - metadata-only fallback; max_error and verdict unaffected
             return 0
 
     def get_scheme_name(self) -> str:

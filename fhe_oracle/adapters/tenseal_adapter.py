@@ -163,7 +163,7 @@ class TenSEALTaylor3Adapter:
         # residual, not hard-fail).
         try:
             return float(ct.scale())
-        except Exception:
+        except Exception:  # noqa: BLE001 - metadata-only fallback; max_error and verdict unaffected
             return float(CKKS_GLOBAL_SCALE)
 
     def get_mult_depth_used(self, ct: Any) -> int:

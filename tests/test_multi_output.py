@@ -5,10 +5,9 @@
 from __future__ import annotations
 
 import numpy as np
-
-from fhe_oracle import EvaluationError
 import pytest
 
+from fhe_oracle import EvaluationError
 from fhe_oracle.multi_output import MultiOutputFitness, MultiOutputMode
 
 

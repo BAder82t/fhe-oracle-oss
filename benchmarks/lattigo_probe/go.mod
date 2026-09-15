@@ -1,4 +1,4 @@
-module github.com/BAder82t/fhe-oracle/lattigo_probe
+module github.com/BAder82t/fhe-oracle-oss/lattigo_probe
 
 go 1.25.2
 

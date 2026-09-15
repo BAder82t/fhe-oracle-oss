@@ -42,9 +42,8 @@ from typing import Any, Callable, Iterable, Optional
 
 import numpy as np
 
-from .fitness import DivergenceFitness
-
 from .core import FHEOracle
+from .fitness import DivergenceFitness
 from .preactivation import PreactivationOracle
 
 
@@ -59,7 +58,17 @@ class CascadeResult:
     n_evals_cheap: int
     n_evals_expensive: int
     elapsed_seconds: float
+    threshold: float
+    verdict: str                        # "PASS" if max_error_expensive < threshold, else "FAIL"
     extra: dict = field(default_factory=dict)
+
+    @property
+    def max_error(self) -> float:
+        return self.max_error_expensive
+
+    @property
+    def worst_input(self) -> list[float]:
+        return self.x
 
 
 def evaluate_correlation(
@@ -131,6 +140,9 @@ class CascadeSearch:
         expensive fidelity. Default 20.
     weights : (W, b) tuple, optional
         Required when ``search_kind="preactivation"``.
+    dedupe_tol : float
+        Candidates within this fraction of the box width on every dim of a better one
+        are skipped before the expensive stage. Default 1e-3; 0 drops exact repeats only.
     """
 
     def __init__(
@@ -142,7 +154,12 @@ class CascadeSearch:
         top_k: int = 20,
         weights: Optional[tuple[np.ndarray, np.ndarray]] = None,
         clip_penalty: float = 0.05,
+        dedupe_tol: float = 1e-3,
     ) -> None:
+        if top_k < 1:
+            raise ValueError("top_k must be at least 1")
+        if dedupe_tol < 0:
+            raise ValueError("dedupe_tol must be non-negative")
         self._cheap = cheap_fhe_fn
         self._expensive = expensive_fhe_fn
         self._plain = plaintext_fn
@@ -151,6 +168,7 @@ class CascadeSearch:
         self._top_k = int(top_k)
         self._weights = weights
         self._clip_penalty = float(clip_penalty)
+        self._dedupe_tol = float(dedupe_tol)
 
     # --------- Helpers ----------------------------------------------
 
@@ -210,7 +228,8 @@ class CascadeSearch:
 
         def _wrapped_cheap(x):
             v = self._cheap(x)
-            scored.append((self._cheap_div(x), np.asarray(x).copy()))
+            div = DivergenceFitness(self._plain, lambda _x: v).score(x)  # reuse v: one cheap call
+            scored.append((div, np.asarray(x).copy()))
             return v
 
         pre = PreactivationOracle(
@@ -230,6 +249,7 @@ class CascadeSearch:
         budget_cheap: int = 500,
         seeds: Iterable[int] = range(1, 11),
         search_kind: str = "cma",
+        threshold: float = 1e-2,
     ) -> list[CascadeResult]:
         """Execute cascade search across seeds.
 
@@ -239,6 +259,8 @@ class CascadeSearch:
             Cheap-fidelity evaluation budget.
         seeds : iterable of int
         search_kind : {"cma", "preactivation", "random"}
+        threshold : float
+            PASS/FAIL cut-off on the expensive divergence at the winner. Default 1e-2.
         """
         results: list[CascadeResult] = []
         for seed in seeds:
@@ -252,9 +274,7 @@ class CascadeSearch:
             else:
                 raise ValueError(f"unknown search_kind={search_kind!r}")
 
-            # Sort by cheap divergence descending, dedupe roughly.
-            scored.sort(key=lambda t: t[0], reverse=True)
-            top = scored[: self._top_k]
+            top = self._distinct_top(scored)
 
             # Stage 2: expensive re-eval, pick the winner.
             best_exp = -np.inf
@@ -267,16 +287,36 @@ class CascadeSearch:
                     best_x = x.copy()
                     best_cheap_at_winner = cheap_s
 
+            max_err = float(max(0.0, best_exp))
             results.append(CascadeResult(
                 seed=int(seed),
                 max_error_cheap_at_winner=float(best_cheap_at_winner),
-                max_error_expensive=float(max(0.0, best_exp)),
+                max_error_expensive=max_err,
                 x=(best_x.tolist() if best_x is not None else []),
                 n_evals_cheap=len(scored),
                 n_evals_expensive=len(top),
                 elapsed_seconds=time.perf_counter() - t0,
+                threshold=float(threshold),
+                verdict="PASS" if max_err < threshold else "FAIL",
             ))
         return results
+
+    def _distinct_top(
+        self, scored: list[tuple[float, np.ndarray]]
+    ) -> list[tuple[float, np.ndarray]]:
+        """Best-first top-K cheap candidates, skipping near-duplicates of better ones."""
+        widths = np.array([hi - lo for lo, hi in self._bounds], dtype=np.float64)
+        widths = np.where(widths > 0, widths, 1.0)
+        top: list[tuple[float, np.ndarray]] = []
+        for s, x in sorted(scored, key=lambda t: t[0], reverse=True):
+            if len(top) >= self._top_k:
+                break
+            if top:
+                kept = np.array([k for _, k in top])
+                if np.min(np.max(np.abs(kept - x) / widths, axis=1)) <= self._dedupe_tol:
+                    continue
+            top.append((s, x))
+        return top
 
 
 # --- helpers --------------------------------------------------------

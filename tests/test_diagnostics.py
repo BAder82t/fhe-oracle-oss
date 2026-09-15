@@ -8,10 +8,9 @@ import os
 import sys
 
 import numpy as np
-
-from fhe_oracle import EvaluationError
 import pytest
 
+from fhe_oracle import EvaluationError
 from fhe_oracle.adapters.base import FHEAdapter
 from fhe_oracle.diagnostics import (
     ComponentLog,

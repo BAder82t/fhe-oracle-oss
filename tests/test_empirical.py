@@ -148,3 +148,26 @@ def test_one_d_data_raises():
     with pytest.raises(ValueError):
         EmpiricalSearch(div_fn, np.zeros(10), threshold=0.1, budget=10,
                         jitter_std=0.0, seed=0)
+
+
+# --- Bounds ---
+
+def test_bounds_clip_jittered_samples_to_domain():
+    data = np.full((20, 4), 0.98)
+    seen = []
+
+    def div_fn(x):
+        seen.append(np.array(x, dtype=np.float64))
+        return float(np.max(np.abs(x)))
+
+    res = EmpiricalSearch(div_fn, data, threshold=10.0, budget=200, jitter_std=0.1,
+                          seed=1, bounds=[(-1.0, 1.0)] * 4).run()
+    pts = np.array(seen)
+    assert np.all((pts >= -1.0) & (pts <= 1.0))
+    assert np.all(np.abs(res.worst_input) <= 1.0)
+    assert res.max_error <= 1.0
+
+
+def test_bounds_must_match_data_dimension():
+    with pytest.raises(ValueError):
+        EmpiricalSearch(lambda x: 0.0, np.zeros((3, 4)), bounds=[(-1.0, 1.0)] * 3)

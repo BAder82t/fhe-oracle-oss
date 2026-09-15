@@ -102,8 +102,8 @@ def main(argv: Optional[list[str]] = None) -> int:
     if args.command == "check":
         try:
             return _run_check(args)
-        except Exception as exc:
-            print(f"fhe-oracle: ERROR: {exc}", file=sys.stderr)
+        except Exception as exc:  # noqa: BLE001 - top-level guard; exit 2 marks errors
+            print(f"fhe-oracle: ERROR: {type(exc).__name__}: {exc}", file=sys.stderr)
             return 2
     parser.print_help()
     return 2

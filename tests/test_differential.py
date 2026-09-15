@@ -8,7 +8,6 @@ import numpy as np
 import pytest
 
 from fhe_oracle import EvaluationError
-
 from fhe_oracle.adapters.base import FHEAdapter
 from fhe_oracle.differential import CrossAdapterFitness, differential_test
 

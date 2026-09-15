@@ -24,10 +24,9 @@ from typing import Any, Callable, Optional
 
 import numpy as np
 
-from .fitness import DivergenceFitness
-
-from .core import FHEOracle, OracleResult
+from .core import FHEOracle, OracleResult, _normalise_bounds
 from .empirical import EmpiricalResult, EmpiricalSearch
+from .fitness import DivergenceFitness
 
 
 @dataclass(frozen=True)
@@ -40,6 +39,11 @@ class HybridResult:
     max_error: float            # max across legs
     worst_input: Any            # input (list or ndarray) from the leg with larger max_error
     source: str                 # "oracle" | "empirical"
+
+    @property
+    def verdict(self) -> str:
+        """Alias of ``union_verdict``, matching the other result types."""
+        return self.union_verdict
 
 
 def _default_divergence_fn(
@@ -78,6 +82,7 @@ def run_hybrid(
     When `data is None`, the empirical leg is skipped and the hybrid
     collapses to the oracle result (union_verdict = oracle verdict,
     empirical_result = None, source = "oracle").
+    Empirical samples are clipped to ``input_bounds`` when given.
     """
     oracle = FHEOracle(
         plaintext_fn=plaintext_fn,
@@ -103,6 +108,7 @@ def run_hybrid(
             budget=empirical_budget,
             jitter_std=jitter_std,
             seed=empirical_seed,
+            bounds=_normalise_bounds(input_bounds, input_dim),
         )
         empirical_result = emp.run()
 

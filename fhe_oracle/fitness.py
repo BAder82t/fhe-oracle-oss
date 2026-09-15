@@ -97,6 +97,15 @@ class DivergenceFitness:
         plain, fhe = evaluate_outputs(self._plaintext_fn, self._fhe_fn, x)
         return finite_score(self._reduce(absolute_error(plain, fhe)))
 
+    def score_with_output(self, x: Any, fhe_value: Any) -> float:
+        """Score ``x`` against an FHE output computed elsewhere, e.g. in a batch."""
+        try:
+            plain = self._plaintext_fn(x)
+        except Exception as exc:
+            raise EvaluationError(f"model evaluation failed: {exc}") from exc
+        p, f = validated_outputs(plain, fhe_value)
+        return finite_score(self._reduce(absolute_error(p, f)))
+
 
 def _to_array(value) -> np.ndarray:
     if isinstance(value, (int, float, np.integer, np.floating)):

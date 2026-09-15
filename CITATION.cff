@@ -6,8 +6,8 @@ authors:
     affiliation: "VaultBytes Innovations Ltd."
     email: "b@vaultbytes.com"
 title: "fhe-oracle: Adversarial and Empirical Differential Testing for CKKS Programs"
-version: 0.6.0
-date-released: 2026-09-14
+version: 0.7.0
+date-released: 2026-09-15
 url: "https://github.com/BAder82t/fhe-oracle-oss"
 repository-code: "https://github.com/BAder82t/fhe-oracle-oss"
 license: AGPL-3.0-or-later

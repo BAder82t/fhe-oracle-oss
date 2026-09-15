@@ -4,7 +4,8 @@
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
 
 Adversarial precision testing for Fully Homomorphic Encryption.
-Finds CKKS bugs that random testing misses.
+Searches for inputs where an encrypted program diverges from its plaintext
+reference and turns them into reproducible tests.
 
 ## Install
 
@@ -67,14 +68,17 @@ FHE precision bugs are **input-localised**. A CKKS circuit that passes
 on 99,999 random inputs in a row can return garbage on the 100,000th.
 The inputs that trigger failure sit in narrow regions of the input
 space — regions that scale with multiplicative depth and the
-magnitude of intermediate ciphertexts — and those regions are vanishingly
-unlikely to be hit by uniform random sampling.
+magnitude of intermediate ciphertexts — and uniform random sampling can
+miss them.
 
-Random testing wastes evaluations in safe parts of the input space.
-An adversarial optimiser (CMA-ES, guided by a noise-budget-aware
-fitness function) spends its budget climbing toward the failure
-region instead, and finds bugs orders of magnitude larger than random
-sampling in the same wall-clock budget.
+Random testing spreads evaluations evenly, including over safe parts of
+the input space. An adversarial optimiser (CMA-ES, guided by output
+divergence) spends its budget climbing toward larger errors instead. How
+much that helps depends on the circuit: in matched comparisons it finds
+larger errors than random sampling on some circuits and smaller ones on
+others, and when the worst case sits on the boundary of the input box,
+evaluating the box corners can do better still. Compare against such simple
+baselines before relying on a result.
 
 The reference logistic-regression example illustrates a polynomial
 approximation defect in a **synthetic CKKS-like circuit**. Random testing
@@ -95,16 +99,34 @@ python benchmarks/sigmoid_defect_benchmark.py --seed 42
 - **Adapters** for OpenFHE, Concrete ML, and TenSEAL connect supported
   circuits to divergence search. Optional plugins can supply additional
   fitness functions. Synthetic checks can run without native FHE libraries.
-- **Output**: PASS/FAIL verdict, worst input, sensitivity map, and a
-  structured JSON/Markdown report for artefact upload.
+- **Output**: PASS/FAIL verdict, worst input, optional witness shrinking and
+  fault localisation, and a structured JSON/Markdown report for artefact upload.
 
 ## Benchmarks
 
-See [benchmarks/](./benchmarks/README.md) for reproducible circuits.
-Historical results below are recorded in
-[the 20-seed summary](benchmarks/results/n20_expansion_summary.csv).
-They are not a fresh validation of v0.6.0. Ratios measure the maximum
-error discovered, not runtime or number of bugs found.
+See [benchmarks/](./benchmarks/README.md) for reproducible circuits. The
+results below come from real TenSEAL CKKS runs during 0.7.0 development, with
+every model evaluation counted; each report records its commit. Studies A–C
+were pre-registered in
+[benchmarks/preregistration_2026-09-15.md](benchmarks/preregistration_2026-09-15.md)
+before they ran. Ratios compare the largest error found, not runtime or number
+of bugs.
+
+| Study | Circuits, seeds, budget | Result |
+|---|---|---|
+| [Sample report](benchmarks/results/sample_report/report.md) (not pre-registered) | LR d=8; 20 seeds; `n_trials`=200 | `AutoOracle`: 3.53× uniform random and 1.43× `FHEOracle` defaults (median); equal to a corner/boundary test set within 1e-5 on 13 seeds, larger on 7. `FHEOracle` alone: 2.37× random, 0.70× the corner set. |
+| [A: vertex probe](benchmarks/results/study_a/report.md) | LR d=8, Chebyshev d=10, polynomial d=6, two interior-worst-case mocks; 20 fresh seeds; 200 | `AutoOracle` with the probe vs without: 1.74×, 3.14× and 1.52× on the three real circuits, higher on every seed. Mocks unchanged by median, lower on 3 and 6 of 20 seeds. Probe kept. |
+| [B: plaintext search first](benchmarks/results/surrogate_search/report.md) | LR d=8; 20 seeds; equal wall-clock | Reached the corner set on 14 of 20 seeds (18 required). No `surrogate_fn` API. |
+| [C: CKKS execution error](benchmarks/results/execution_error_search/report.md) | LR d=8; 10 seeds; 200 | `FHEOracle`: 3.0× uniform random and 2.0× Sobol, but 0.72× the corner set; best baseline beaten on 0 of 10 seeds. The Chebyshev d=30 circuit did not fit the first run's compute cap and will be reported separately. |
+
+On the real circuits above, the largest errors sit at or near the vertices of
+the input box, so a corner/boundary test set is a strong baseline: search alone
+beats random and Sobol sampling but not corners, and `AutoOracle`'s vertex probe
+closes that gap. Compare against such baselines before relying on a result.
+
+Earlier results, recorded in
+[the 20-seed summary](benchmarks/results/n20_expansion_summary.csv), predate
+the 0.6.0 and 0.7.0 fixes:
 
 | Real TenSEAL circuit / setting | Seeds | Median oracle/random max-error ratio | Oracle wins |
 |---|---:|---:|---:|
@@ -129,6 +151,11 @@ search; it is not proof of correctness, cryptographic security or
 regulatory compliance. Coverage confidence is conditional on the
 caller-supplied minimum failure-region measure.
 
+A violation seen by any counted evaluation makes the run `FAIL`, even if
+the final re-measurement of that input lands below the threshold on a noisy
+backend; `search_max_error` and `remeasured_error` report both values. In
+multi-output rank modes an argmax flip also means `FAIL` (`class_flip`).
+
 Invalid evaluations abort the run instead of producing a PASS. The built-in
 precision comparisons reject backend exceptions, non-finite values, empty
 outputs and mismatched output shapes. Scalars and one-element vectors
@@ -136,10 +163,52 @@ are compatible; higher-dimensional shapes must match. `EvaluationError`
 is exported for callers to catch. Custom fitness implementations must
 propagate backend failures and return finite scores.
 
+`n_trials` caps model evaluations; one extra evaluation re-measures the
+reported witness. Adaptive mode may extend its budget by design.
+
+On noisy backends such as CKKS, every encryption adds fresh noise, so the
+same seed can follow a different search path. Compare methods across several
+seeds. `shrink()` confirms its result with repeated measurements, but a witness
+within noise of the threshold can still re-measure below it; the unshrunk
+witness is the stronger reproduction.
+
 The CLI exits **0** for PASS, **1** for a measured precision FAIL and
 **2** for a model, configuration or evaluation error. In CI, treat every
 nonzero exit as a blocked check. Some backend/property callbacks may
 propagate their original exception; they never imply a successful check.
+
+## Evaluation log
+
+CKKS runs are not bit-reproducible, so keep a record of what was evaluated:
+
+```python
+from fhe_oracle import FHEOracle, JsonlEvaluationLog, read_log, replay
+
+with JsonlEvaluationLog("run.jsonl") as log:
+    result = FHEOracle(plaintext_fn, fhe_fn, input_dim=d, input_bounds=bounds,
+                       on_evaluation=log).run(n_trials=500, threshold=1e-3)
+    digest = log.sha256()                  # put this in the report
+rows = replay(read_log("run.jsonl"), plaintext_fn, fhe_fn)  # re-measure the witness
+```
+
+Each line records one counted evaluation (`search`, `remeasure`, `shrink`,
+`shrink_verify`) with its index, input and score or error.
+
+## Batch evaluation for expensive backends
+
+Real CKKS evaluations can take tens of milliseconds or more each. Pass
+`batch_fhe_fn(xs) -> list` to evaluate each CMA-ES generation and the
+random-floor sample in one call, for example with a process pool whose
+workers load their own copy of the FHE context. Return outputs in input
+order: plaintext evaluation, validation and budget counting stay in the
+calling process, so the search matches the sequential run. `fhe_fn` is still
+required for the final re-measurement and `shrink()`.
+
+Threads do not help with the TenSEAL or OpenFHE Python bindings, which hold
+the GIL during encrypted operations. On TenSEAL logistic regression (d=8),
+8 worker processes gave 3.3–3.9× throughput after about 5 s of start-up on
+a loaded 14-core machine. Workers given a secret-key context hold that key
+in memory.
 
 ## Supported integrations
 
@@ -151,6 +220,14 @@ warnings and fall back to available Core functionality.
 TenSEAL, OpenFHE and Concrete are optional integrations with backend-specific
 requirements. The Lattigo module is a restricted subprocess precision probe,
 not a general Core adapter, and its Go binary must be built separately.
+CI runs the test suite on Python 3.9–3.13 and native TenSEAL integration
+tests; the OpenFHE, SEAL and Concrete ML adapters are covered with fake
+backends only. OpenFHE and SEAL adapters take `output_length` (use 1 for
+scalar-output circuits); the OpenFHE adapter matched TenSEAL on LR d=8
+(`benchmarks/openfhe_tenseal_parity.py`). For Concrete ML, search with
+`fhe_fn=predict_proba_fhe_fn(model, fhe="simulate")`, then re-measure
+`result.worst_input` with `fhe="execute"` yourself; `ConcreteAdapter` needs
+`quantize_fn`/`dequantize_fn` for Concrete ML models.
 The package remains Alpha while backend/version validation expands.
 
 ## CI/CD integration
@@ -198,6 +275,26 @@ jobs:
 
 Full template: [examples/github_action.yml](./examples/github_action.yml).
 
+## Features (v0.7)
+
+- **Verdicts count every evaluation** — a violation seen during search or at
+  the re-measurement makes the run `FAIL`, as does a class flip in rank modes;
+  `search_max_error`, `remeasured_error` and `class_flip` report each part.
+- **Budgets are caps** — `n_trials` bounds model evaluations for `FHEOracle`
+  and `AutoOracle`, including `AutoOracle`'s probes.
+- **`AutoOracle` vertex probe** — tries box vertices near the best probe
+  points (study A above).
+- **Evaluation log** — `on_evaluation`, `JsonlEvaluationLog`, `read_log` and
+  `replay` for `FHEOracle`, `AutoOracle`, `check()` and `PreactivationOracle`.
+- **`batch_fhe_fn`** — evaluate each CMA-ES generation in one call, for example
+  with a process pool.
+- **Clopper–Pearson bound** —
+  `CoverageCertificate.violating_fraction_upper_bound(confidence)`.
+- **Adapters** — the OpenFHE adapter works on real OpenFHE; OpenFHE and SEAL
+  take `output_length`, and Concrete ML takes quantisation hooks.
+
+See [CHANGELOG.md](./CHANGELOG.md) for the full list and migration notes.
+
 ## Features (v0.6)
 
 - **One-call check** — `check(plaintext_fn, fhe_fn, input_bounds)` runs
@@ -229,7 +326,8 @@ Full template: [examples/github_action.yml](./examples/github_action.yml).
   `characterize_structure` and dispatches to `separable=True` CMA-ES
   only when real low-rank structure is found (dimension alone is not
   used, avoiding the earlier `d>100` heuristic's regression on
-  isotropic circuits).
+  isotropic circuits). The diagnostic costs about 400·d + 50 evaluations
+  and is skipped when `n_trials` does not cover it.
 - **Multi-library differential testing** — `differential_test(adapter_a,
   adapter_b, input_dim, ...)` searches for inputs where two FHE
   adapters' decrypted outputs disagree, using only `encrypt`/`decrypt`
@@ -314,8 +412,10 @@ Full template: [examples/github_action.yml](./examples/github_action.yml).
   training-distribution legs pass.
 - **Coverage certificate** — the random-floor phase produces a
   `CoverageCertificate` attached to `OracleResult`; pair with
-  `budget_for(eta, p)` or `pass_confidence(eta)` for a
-  probabilistic PASS statement.
+  `budget_for(eta, p)` or `pass_confidence(eta)` for a PASS statement
+  conditional on an assumed minimum failure-region size, or
+  `violating_fraction_upper_bound(0.95)` for a Clopper–Pearson upper bound
+  on the share of the domain that meets the threshold.
 - **Preactivation search** — `PreactivationOracle(W, b, ...)`
   searches in preactivation z-space, collapsing d=784 affine
   front-ends to a rank-k subproblem.
@@ -326,8 +426,23 @@ Full template: [examples/github_action.yml](./examples/github_action.yml).
   fhe)` and `TracingTenSEALFn` localise where error accumulates
   in a CKKS circuit.
 - **TenSEAL adapter** — `pip install fhe-oracle[tenseal]`
-  enables noise-guided search on CKKS.
+  installs a native CKKS backend for real encrypted runs.
 
 ## Licensing
 
-AGPL-3.0-or-later. See [LICENSE](./LICENSE).
+AGPL-3.0-or-later. See [LICENSE](./LICENSE). Historical open-core split
+plans are proposals, not alternative licensing terms for this release.
+AGPL permits commercial use subject to its terms; use of this package
+does not automatically require purchasing a separate commercial license.
+
+The maintainer supplied ePCT documents for **PCT/IB2026/053378**, listing
+an international filing date of **7 April 2026**, together with a draft
+specification containing 25 claims concerning adversarial testing of FHE
+programs. This establishes documentary support for the application;
+it does not establish a patent grant or independently verify current
+register status. Patent scope and any alternative commercial terms must
+be assessed against the actual claims, ownership and existing license
+grants, including LICENSE Section 11.
+
+Paid integration, precision assessments and support can be scoped separately.
+For inquiries, contact the maintainer listed in `pyproject.toml`.

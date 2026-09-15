@@ -27,6 +27,10 @@ dispatches to the strategy best suited for that regime:
    Dispatch: default CMA-ES (pure divergence, no warm-start).
    Detection: none of the above.
 
+In plain ``fhe_fn`` divergence mode (not preactivation) a boundary probe snaps
+the best probes to vertices and, if a vertex beats every probe, climbs by
+single-coordinate flips. A better pre-search witness is re-measured like core's.
+
 Example
 -------
     from fhe_oracle.autoconfig import AutoOracle
@@ -40,26 +44,37 @@ Example
     print(result.regime)          # 'standard', 'preactivation_dominated', ...
     print(result.strategy_used)   # 'cma_es', 'preactivation', ...
 
-The probe budget is *subtracted* from ``n_trials`` -- a caller who
-asks for 500 trials with the default 50 probes gets 50 probes plus
-450 search evaluations, not 550 total.
+Every evaluation counts toward the ``n_trials`` budget: probes, structure diagnostic,
+boundary probe, search and re-measurements (``adaptive=True`` may extend it).
 """
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Callable, Optional
+from typing import TYPE_CHECKING, Any, Callable, Optional
 
 import numpy as np
-
-from .fitness import DivergenceFitness
 from scipy.stats import spearmanr
 
 from .diagnostics import characterize_structure
+from .evallog import EventSink, _event
+from .fitness import DivergenceFitness
+
+if TYPE_CHECKING:
+    from .core import FHEOracle, OracleResult
+    from .preactivation import PreactivationOracle
+
+_Boundary = tuple[Optional[list[float]], float, int]  # (vertex, divergence, evaluations used)
 
 
 _PROBE_SEED_SALT = 0xB0B3  # deterministic seed salt for probe RNG
+_BOUNDARY_TOP_K = 3  # probe points snapped to vertices
+_BOUNDARY_SHARE = 0.15  # max share of n_trials for the boundary probe
+_RESERVE = 3  # one search evaluation plus two re-measurements (search and pre-search witness)
+_RESERVE_1D_PREACT = 10  # PreactivationOracle's 1-D path spends max(budget, 9) + 1
+_OTHER_OBJECTIVES = ("adapter", "fitness", "multi_output")  # kwargs that change what is scored
 
 
 def _detect_plateau_cliff(divs: np.ndarray) -> bool:
@@ -147,7 +162,7 @@ _DISTANT_DEFECT_SIGMA = 1.0
 _DISTANT_DEFECT_RATIO = 0.1
 
 
-def _distant_defect_probe(plaintext_fn: Callable, fhe_fn: Callable,
+def _distant_defect_probe(score: Callable[[np.ndarray], float],
                           bounds: list[tuple[float, float]], rng: np.random.Generator,
                           n: int = _DISTANT_DEFECT_CENTER_PROBES) -> np.ndarray:
     """Sample n points in a Gaussian ball around box centre (radius
@@ -160,10 +175,7 @@ def _distant_defect_probe(plaintext_fn: Callable, fhe_fn: Callable,
     centre = (lo + hi) / 2.0
     centre_probes = centre + rng.normal(0.0, _DISTANT_DEFECT_SIGMA, size=(n, d))
     centre_probes = np.clip(centre_probes, lo, hi)
-    return np.array(
-        [_divergence(plaintext_fn, fhe_fn, centre_probes[i]) for i in range(n)],
-        dtype=np.float64,
-    )
+    return np.array([score(centre_probes[i]) for i in range(n)], dtype=np.float64)
 
 
 def _detect_distant_defect(centre_divs: np.ndarray,
@@ -198,16 +210,38 @@ class ProbeResult:
         Per-probe divergence values (length ``n_probes``).
     recommendation : dict
         Dispatch recipe (strategy name + kwargs).
+    probe_points : np.ndarray, optional
+        Uniform probe inputs, row-aligned with ``probe_divergences``.
+    n_evals : int
+        Evaluations charged to the budget, including the structure diagnostic.
+    best_input, best_divergence
+        Largest divergence over all charged evaluations and its input.
     """
 
     regime: Regime
     probe_divergences: np.ndarray
     recommendation: dict = field(default_factory=dict)
+    probe_points: Optional[np.ndarray] = None
+    n_evals: int = 0
+    best_input: Optional[list[float]] = None
+    best_divergence: float = -np.inf
 
 
 def _divergence(plaintext_fn: Callable, fhe_fn: Callable, x: np.ndarray) -> float:
     """Reducer-max absolute divergence |plain(x) - fhe(x)|."""
     return DivergenceFitness(plaintext_fn, fhe_fn).score(x)
+
+
+class _Renumbered:
+    """``on_evaluation`` wrapper giving every event of a run one consecutive ``index``."""
+
+    def __init__(self, sink: EventSink) -> None:
+        self._sink = sink
+        self.count = 0
+
+    def __call__(self, event: dict[str, Any]) -> None:
+        self._sink({**event, "index": self.count})
+        self.count += 1
 
 
 def classify_landscape(
@@ -219,6 +253,8 @@ def classify_landscape(
     b: Optional[np.ndarray] = None,
     seed: int = 0,
     second_pass_probes: int = 50,
+    max_evals: Optional[int] = None,
+    on_evaluation: Optional[EventSink] = None,
 ) -> ProbeResult:
     """Run ``n_probes`` uniform random evaluations and classify.
 
@@ -239,6 +275,11 @@ def classify_landscape(
         Extra probes to draw when the first pass is borderline for
         plateau-cliff (CV in (0.1, 0.5) and ``max > 3 * median`` but
         no test fires). Set to ``0`` to disable.
+    max_evals : int, optional
+        Cap on charged evaluations. Later stages are skipped if they would exceed it,
+        the structure diagnostic also if it needs over half; the first pass always runs.
+    on_evaluation : callable, optional
+        Receives one core-shaped event per charged evaluation (kind ``probe`` or ``structure``).
 
     Returns
     -------
@@ -251,12 +292,36 @@ def classify_landscape(
     d = len(bounds)
     lo = np.array([bd[0] for bd in bounds], dtype=np.float64)
     hi = np.array([bd[1] for bd in bounds], dtype=np.float64)
+    n_evals = 0
+    best_x: Optional[list[float]] = None
+    best_s = -np.inf
+
+    def div(x: np.ndarray, kind: str = "probe") -> float:
+        nonlocal n_evals, best_x, best_s
+        s = _divergence(plaintext_fn, fhe_fn, x)
+        if on_evaluation is not None:
+            on_evaluation(_event(n_evals, kind, x, score=s))
+        n_evals += 1
+        if s > best_s:
+            best_x, best_s = np.asarray(x, dtype=np.float64).tolist(), s
+        return s
+
+    def fits(k: int) -> bool:
+        return max_evals is None or n_evals + k <= max_evals
 
     probes = rng.uniform(lo, hi, size=(n_probes, d))
-    divs = np.array(
-        [_divergence(plaintext_fn, fhe_fn, probes[i]) for i in range(n_probes)],
-        dtype=np.float64,
-    )
+    divs = np.array([div(probes[i]) for i in range(n_probes)], dtype=np.float64)
+
+    def done(regime: Regime, recommendation: dict) -> ProbeResult:
+        return ProbeResult(
+            regime=regime,
+            probe_divergences=divs,
+            recommendation=recommendation,
+            probe_points=probes,
+            n_evals=n_evals,
+            best_input=best_x,
+            best_divergence=best_s,
+        )
 
     max_div = float(np.max(divs))
     med_div = float(np.median(divs))
@@ -272,19 +337,15 @@ def classify_landscape(
     else:
         high_frac = 1.0
     if high_frac > 0.90:
-        return ProbeResult(
-            regime=Regime.FULL_DOMAIN_SATURATION,
-            probe_divergences=divs,
-            recommendation={
-                "strategy": "random_only",
-                "reason": (
-                    f"{high_frac:.0%} of probes exceed 50% of max divergence "
-                    f"-- no concentrated bug region"
-                ),
-                "random_floor": 1.0,
-                "warm_start": False,
-            },
-        )
+        return done(Regime.FULL_DOMAIN_SATURATION, {
+            "strategy": "random_only",
+            "reason": (
+                f"{high_frac:.0%} of probes exceed 50% of max divergence "
+                f"-- no concentrated bug region"
+            ),
+            "random_floor": 1.0,
+            "warm_start": False,
+        })
 
     # 2. Plateau-then-cliff: detected by the helper's three-test ensemble.
     #    On borderline cases (CV in (0.1, 0.5) with a meaningful cliff
@@ -293,60 +354,46 @@ def classify_landscape(
     #    where the cliff is too narrow for 50 probes to resolve.
     if _detect_plateau_cliff(divs):
         cv = std_div / mean_div if mean_div > 0.0 else 0.0
-        return ProbeResult(
-            regime=Regime.PLATEAU_THEN_CLIFF,
-            probe_divergences=divs,
-            recommendation={
-                "strategy": "warm_start",
-                "reason": (
-                    f"Plateau-cliff detected (CV={cv:.3f}, "
-                    f"max/med={(max_div / med_div) if med_div > 0 else float('inf'):.1f}x)"
-                ),
-                "random_floor": 0.3,
-                "warm_start": True,
-            },
-        )
+        return done(Regime.PLATEAU_THEN_CLIFF, {
+            "strategy": "warm_start",
+            "reason": (
+                f"Plateau-cliff detected (CV={cv:.3f}, "
+                f"max/med={(max_div / med_div) if med_div > 0 else float('inf'):.1f}x)"
+            ),
+            "random_floor": 0.3,
+            "warm_start": True,
+        })
 
     if (
         second_pass_probes > 0
         and mean_div > 0.0
         and med_div > 0.0
+        and fits(int(second_pass_probes))
     ):
         cv = std_div / mean_div if mean_div > 0.0 else 0.0
         if 0.1 < cv < 0.5 and max_div > 3.0 * med_div:
             extra = rng.uniform(lo, hi, size=(int(second_pass_probes), d))
             extra_divs = np.array(
-                [_divergence(plaintext_fn, fhe_fn, extra[i])
-                 for i in range(extra.shape[0])],
-                dtype=np.float64,
+                [div(extra[i]) for i in range(extra.shape[0])], dtype=np.float64
             )
-            combined = np.concatenate([divs, extra_divs])
-            if _detect_plateau_cliff(combined):
-                c_mean = float(np.mean(combined))
-                c_std = float(np.std(combined))
-                c_med = float(np.median(combined))
-                c_max = float(np.max(combined))
-                c_cv = c_std / c_mean if c_mean > 0.0 else 0.0
-                return ProbeResult(
-                    regime=Regime.PLATEAU_THEN_CLIFF,
-                    probe_divergences=combined,
-                    recommendation={
-                        "strategy": "warm_start",
-                        "reason": (
-                            f"Plateau-cliff detected after second pass "
-                            f"(n={combined.size}, CV={c_cv:.3f}, "
-                            f"max/med={(c_max / c_med) if c_med > 0 else float('inf'):.1f}x)"
-                        ),
-                        "random_floor": 0.3,
-                        "warm_start": True,
-                    },
-                )
             probes = np.concatenate([probes, extra], axis=0)
-            divs = combined
+            divs = np.concatenate([divs, extra_divs])
             max_div = float(np.max(divs))
             med_div = float(np.median(divs))
             std_div = float(np.std(divs))
             mean_div = float(np.mean(divs))
+            if _detect_plateau_cliff(divs):
+                c_cv = std_div / mean_div if mean_div > 0.0 else 0.0
+                return done(Regime.PLATEAU_THEN_CLIFF, {
+                    "strategy": "warm_start",
+                    "reason": (
+                        f"Plateau-cliff detected after second pass "
+                        f"(n={divs.size}, CV={c_cv:.3f}, "
+                        f"max/med={(max_div / med_div) if med_div > 0 else float('inf'):.1f}x)"
+                    ),
+                    "random_floor": 0.3,
+                    "warm_start": True,
+                })
 
     # 3. Preactivation-dominated: delta correlates with |Wx+b|. Only
     #    runs when W, b are supplied.
@@ -369,20 +416,16 @@ def classify_landscape(
             corr = float(_sr.statistic) if np.isfinite(_sr.statistic) else 0.0
             pval = float(_sr.pvalue) if np.isfinite(_sr.pvalue) else 1.0
             if corr > 0.7:
-                return ProbeResult(
-                    regime=Regime.PREACTIVATION_DOMINATED,
-                    probe_divergences=divs,
-                    recommendation={
-                        "strategy": "preactivation",
-                        "reason": (
-                            f"Spearman(delta, |Wx+b|) = {corr:.2f} "
-                            f"(p={pval:.1e}) -- divergence factors through "
-                            f"preactivation"
-                        ),
-                        "use_preactivation": True,
-                        "preactivation_rank": int(W_arr.shape[0]),
-                    },
-                )
+                return done(Regime.PREACTIVATION_DOMINATED, {
+                    "strategy": "preactivation",
+                    "reason": (
+                        f"Spearman(delta, |Wx+b|) = {corr:.2f} "
+                        f"(p={pval:.1e}) -- divergence factors through "
+                        f"preactivation"
+                    ),
+                    "use_preactivation": True,
+                    "preactivation_rank": int(W_arr.shape[0]),
+                })
 
     # 4. Distant-defect: fitness concentrated far from box centre.
     #    CMA-ES with default sigma0=1.0 at the box midpoint would
@@ -391,12 +434,10 @@ def classify_landscape(
     #    dedicated centre-ball probe (20 evals in addition to the
     #    main probe batch) so the test is reliable across seeds and
     #    dimensions.
-    centre_divs = _distant_defect_probe(plaintext_fn, fhe_fn, bounds, rng)
-    if _detect_distant_defect(centre_divs, divs):
-        return ProbeResult(
-            regime=Regime.DISTANT_DEFECT,
-            probe_divergences=divs,
-            recommendation={
+    if fits(_DISTANT_DEFECT_CENTER_PROBES):
+        centre_divs = _distant_defect_probe(div, bounds, rng)
+        if _detect_distant_defect(centre_divs, divs):
+            return done(Regime.DISTANT_DEFECT, {
                 "strategy": "robust_cma_es",
                 "reason": (
                     "Divergence concentrated far from box centre "
@@ -406,15 +447,18 @@ def classify_landscape(
                 "sigma0": None,
                 "use_heuristic_seeds": True,
                 "heuristic_k": 10,
-            },
-        )
+            })
 
     # 5. Low-rank structure in the divergence surface (measured via SVD,
     #    not dimension alone -- the d>100->SubspaceOracle heuristic
     #    below was reverted for firing on isotropic high-d circuits).
-    if d >= _LOW_RANK_MIN_DIM:
+    #    Charged at up to 2*d evaluations per sample; skipped when it does not fit.
+    structure_cost = _LOW_RANK_STRUCTURE_SAMPLES * 2 * d
+    if d >= _LOW_RANK_MIN_DIM and fits(structure_cost) and (
+        max_evals is None or structure_cost <= max_evals // 2
+    ):
         def _delta(x: list[float]) -> float:
-            return _divergence(plaintext_fn, fhe_fn, np.asarray(x))
+            return div(np.asarray(x, dtype=np.float64), "structure")
 
         structure = characterize_structure(
             _delta,
@@ -426,32 +470,93 @@ def classify_landscape(
         if structure.effective_rank > 0 and structure.effective_rank <= int(
             d * _LOW_RANK_RANK_FRACTION
         ):
-            return ProbeResult(
-                regime=Regime.LOW_RANK_STRUCTURE,
-                probe_divergences=divs,
-                recommendation={
-                    "strategy": "separable_cma_es",
-                    "reason": (
-                        f"characterize_structure found effective_rank="
-                        f"{structure.effective_rank} of dim={d} "
-                        f"-- diagonal-covariance search is likely to help"
-                    ),
-                    "separable": True,
-                    "effective_rank": structure.effective_rank,
-                },
-            )
+            return done(Regime.LOW_RANK_STRUCTURE, {
+                "strategy": "separable_cma_es",
+                "reason": (
+                    f"characterize_structure found effective_rank="
+                    f"{structure.effective_rank} of dim={d} "
+                    f"-- diagonal-covariance search is likely to help"
+                ),
+                "separable": True,
+                "effective_rank": structure.effective_rank,
+            })
 
     # 6. Standard fall-through.
-    return ProbeResult(
-        regime=Regime.STANDARD,
-        probe_divergences=divs,
-        recommendation={
-            "strategy": "cma_es",
-            "reason": "No extreme regime detected -- standard CMA-ES search",
-            "random_floor": 0.0,
-            "warm_start": False,
-        },
-    )
+    return done(Regime.STANDARD, {
+        "strategy": "cma_es",
+        "reason": "No extreme regime detected -- standard CMA-ES search",
+        "random_floor": 0.0,
+        "warm_start": False,
+    })
+
+
+def _boundary_probe(
+    plaintext_fn: Callable,
+    fhe_fn: Callable,
+    bounds: list[tuple[float, float]],
+    probe: ProbeResult,
+    budget: int,
+    on_evaluation: Optional[EventSink] = None,
+) -> tuple[Optional[list[float]], float, int]:
+    """Snap top probe points to vertices; flip-climb only if a vertex beats the probes.
+
+    Returns ``(best_vertex, divergence, evaluations_used)``.
+    """
+    pts, divs = probe.probe_points, probe.probe_divergences
+    if budget <= 0 or pts is None or divs.size == 0:
+        return None, -np.inf, 0
+    lo = np.array([bd[0] for bd in bounds], dtype=np.float64)
+    hi = np.array([bd[1] for bd in bounds], dtype=np.float64)
+    mid, half = (lo + hi) / 2.0, (hi - lo) / 2.0
+    used = 0
+    best_x: Optional[np.ndarray] = None
+    best_s, best_rel = -np.inf, np.zeros_like(mid)
+    tried: set[bytes] = set()
+
+    def score(x: np.ndarray) -> float:
+        nonlocal used
+        s = _divergence(plaintext_fn, fhe_fn, x)
+        if on_evaluation is not None:
+            on_evaluation(_event(used, "boundary", x, score=s))
+        used += 1
+        return s
+
+    for i in np.argsort(-divs, kind="stable")[:_BOUNDARY_TOP_K]:
+        rel = np.divide(pts[i] - mid, half, out=np.zeros_like(mid), where=half > 0)
+        v = np.where(rel >= 0.0, hi, lo)
+        if used >= budget or v.tobytes() in tried:
+            continue
+        tried.add(v.tobytes())
+        s = score(v)
+        if s > best_s:
+            best_x, best_s, best_rel = v, s, rel
+    if best_x is None:
+        return None, -np.inf, used
+
+    mirror = np.where(best_x == hi, lo, hi)  # exact bounds; lo + hi - x can round outside
+    if used < budget and mirror.tobytes() not in tried:
+        s = score(mirror)
+        if s > best_s:
+            best_x, best_s = mirror, s
+
+    # Interior worst case: the boundary lost to the probes, so stop here.
+    if best_s <= float(np.max(divs)):
+        return best_x.tolist(), best_s, used
+
+    # Least-confident coordinates (nearest the centre) are flipped first.
+    order = [j for j in np.argsort(np.abs(best_rel), kind="stable") if half[j] > 0]
+    improved = True
+    while improved and used < budget:
+        improved = False
+        for j in order:
+            if used >= budget:
+                break
+            y = best_x.copy()
+            y[j] = lo[j] if y[j] == hi[j] else hi[j]
+            s = score(y)
+            if s > best_s:
+                best_x, best_s, improved = y, s, True
+    return best_x.tolist(), best_s, used
 
 
 class AutoOracle:
@@ -472,7 +577,8 @@ class AutoOracle:
         probe tests preactivation dominance; if detected, dispatch uses
         :class:`PreactivationOracle`.
     n_probes : int, default 50
-        Number of probe evaluations. Subtracted from the total budget.
+        First-pass probe evaluations; like all probes, counted in ``n_trials`` and
+        ``result.n_trials``.
     **oracle_kwargs
         Passed through to the underlying :class:`FHEOracle` or
         :class:`PreactivationOracle` (e.g. ``sigma0``, ``separable``).
@@ -483,6 +589,12 @@ class AutoOracle:
     :class:`ProbeResult`, and ``self.last_oracle`` exposes the inner
     ``FHEOracle`` instance (e.g. for ``.shrink()``) -- ``None`` when
     dispatch used ``PreactivationOracle`` instead.
+
+    ``result.n_trials`` counts every evaluation except re-measurements (probes, structure
+    diagnostic, boundary probe, search), as FHEOracle does. A better pre-search witness
+    replaces ``worst_input``. An ``on_evaluation`` kwarg receives all of them plus each
+    re-measurement, with one consecutive ``index`` (kinds probe, structure, boundary,
+    search, remeasure).
     """
 
     def __init__(
@@ -507,6 +619,7 @@ class AutoOracle:
         self.oracle_kwargs = oracle_kwargs
         self.probe_result: Optional[ProbeResult] = None
         self.last_oracle: Optional[Any] = None  # inner FHEOracle from the last run(); None for PreactivationOracle dispatch
+        self._events: Optional[_Renumbered] = None  # this run's on_evaluation wrapper, if any
 
     def _attach_meta(self, result, regime: Regime, strategy: str):
         """Tag result with regime/strategy. Works for OracleResult and
@@ -519,6 +632,60 @@ class AutoOracle:
             pass
         return result
 
+    def _finish(
+        self,
+        oracle: FHEOracle,
+        regime: Regime,
+        strategy: str,
+        presearch: Optional[_Boundary],
+        n_trials: int,
+        threshold: float,
+        run_kwargs: dict[str, Any],
+    ) -> OracleResult:
+        """Run the inner search, merge any pre-search witness, count probe evaluations, tag."""
+        self.last_oracle = oracle
+        result = oracle.run(n_trials=n_trials, threshold=threshold, **run_kwargs)
+        if presearch is not None:
+            result = self._merge_presearch(result, oracle, presearch)
+        assert self.probe_result is not None
+        result.n_trials += self.probe_result.n_evals
+        return self._attach_meta(result, regime, strategy)
+
+    def _merge_presearch(
+        self, result: OracleResult, oracle: FHEOracle, boundary: _Boundary
+    ) -> OracleResult:
+        """Count boundary evaluations; a larger pre-search witness is re-measured like core's."""
+        x_b, s_b, used = boundary
+        result.n_trials += used
+        cands: list[tuple[float, Optional[list[float]]]] = [(s_b, x_b)]
+        if self.probe_result is not None:
+            cands.append((self.probe_result.best_divergence, self.probe_result.best_input))
+        s, x = max(((s, x) for s, x in cands if x is not None),
+                   key=lambda c: c[0], default=(-np.inf, None))
+        if x is None or not s > result.max_error:
+            return result
+        # Same rule as FHEOracle.run: the counted evaluation and its re-measurement both count.
+        # _measure_divergence returns (error, noise_state, class_flip).
+        measured = oracle._measure_divergence(list(x), s)
+        if self._events is not None:
+            self._events(_event(0, "remeasure", x, error=measured[0]))
+        result.worst_input = list(x)
+        result.remeasured_error = float(measured[0])
+        result.noise_state = measured[1]
+        result.search_max_error = float(s)
+        result.max_error = max(float(s), float(measured[0]))
+        if result.max_error >= result.threshold:
+            result.verdict = "FAIL"
+        return result
+
+    def _preactivation_oracle(self) -> PreactivationOracle:
+        """PreactivationOracle whose model calls reach this run's event log, if any."""
+        from .preactivation import PreactivationOracle
+
+        return PreactivationOracle(W=self.W, b=self.b, plaintext_fn=self.plaintext_fn,
+                                   fhe_fn=self.fhe_fn, input_bounds=self.bounds,
+                                   on_evaluation=self._events)
+
     def run(
         self,
         n_trials: int = 500,
@@ -526,12 +693,13 @@ class AutoOracle:
         threshold: float = 1e-2,
         **run_kwargs: Any,
     ):
-        """Probe, classify, dispatch.
+        """Probe, classify, probe the boundary, dispatch.
 
         Parameters
         ----------
         n_trials : int, default 500
-            Total budget (probe + search). Probes are subtracted.
+            Total evaluation budget, including every probe and re-measurement.
+            Minimum ``n_probes + 3``, or ``n_probes + 10`` when ``W`` has a single row.
         seed : int, default 42
             Seed for probe RNG and search.
         threshold : float, default 1e-2
@@ -544,11 +712,20 @@ class AutoOracle:
         result : OracleResult or PreactivationResult
             Augmented with ``.regime`` and ``.strategy_used`` attributes.
         """
-        if n_trials <= self.n_probes:
+        reserve = _RESERVE
+        if self.W is not None and self.b is not None and np.atleast_2d(self.W).shape[0] == 1:
+            reserve = _RESERVE_1D_PREACT
+        if n_trials < self.n_probes + reserve:
             raise ValueError(
-                f"n_trials ({n_trials}) must exceed n_probes ({self.n_probes})"
+                f"n_trials ({n_trials}) must be at least n_probes + {reserve} "
+                f"({self.n_probes + reserve})"
             )
         self.last_oracle = None  # reset -- stays None if this run dispatches to PreactivationOracle
+        sink = self.oracle_kwargs.get("on_evaluation")
+        self._events = _Renumbered(sink) if sink is not None else None
+        okw = dict(self.oracle_kwargs)
+        if self._events is not None:
+            okw["on_evaluation"] = self._events
 
         self.probe_result = classify_landscape(
             self.plaintext_fn,
@@ -558,10 +735,31 @@ class AutoOracle:
             W=self.W,
             b=self.b,
             seed=seed,
+            max_evals=min(max(self.n_probes, n_trials - self.n_probes), n_trials - reserve),
+            on_evaluation=self._events,
         )
 
         regime = self.probe_result.regime
-        remaining_budget = n_trials - self.n_probes
+        used = self.probe_result.n_evals
+        # The probe scores fhe_fn divergence, so it stays out of other search objectives.
+        merge = regime != Regime.PREACTIVATION_DOMINATED and not any(
+            self.oracle_kwargs.get(k) for k in _OTHER_OBJECTIVES
+        )
+        boundary: tuple[Optional[list[float]], float, int] = (None, -np.inf, 0)
+        if merge:
+            cap = min(
+                math.ceil(_BOUNDARY_SHARE * n_trials),
+                _BOUNDARY_TOP_K + 1 + 2 * self.d,
+                max(0, (n_trials - used - _RESERVE) // 2),
+            )
+            boundary = _boundary_probe(
+                self.plaintext_fn, self.fhe_fn, self.bounds, self.probe_result, cap,
+                self._events,
+            )
+            used += boundary[2]
+        # Held back: the inner run's re-measurement, plus one for a pre-search witness.
+        remaining_budget = n_trials - used - (2 if merge else 1)
+        presearch = boundary if merge else None
 
         if regime == Regime.FULL_DOMAIN_SATURATION:
             from .core import FHEOracle
@@ -573,13 +771,10 @@ class AutoOracle:
                 input_bounds=self.bounds,
                 seed=seed,
                 random_floor=1.0,
-                **self.oracle_kwargs,
+                **okw,
             )
-            self.last_oracle = oracle
-            result = oracle.run(
-                n_trials=remaining_budget, threshold=threshold, **run_kwargs
-            )
-            return self._attach_meta(result, regime, "random_only")
+            return self._finish(oracle, regime, "random_only", presearch,
+                                remaining_budget, threshold, run_kwargs)
 
         if regime == Regime.PLATEAU_THEN_CLIFF:
             from .core import FHEOracle
@@ -592,13 +787,10 @@ class AutoOracle:
                 seed=seed,
                 random_floor=0.3,
                 warm_start=True,
-                **self.oracle_kwargs,
+                **okw,
             )
-            self.last_oracle = oracle
-            result = oracle.run(
-                n_trials=remaining_budget, threshold=threshold, **run_kwargs
-            )
-            return self._attach_meta(result, regime, "warm_start")
+            return self._finish(oracle, regime, "warm_start", presearch,
+                                remaining_budget, threshold, run_kwargs)
 
         if regime == Regime.DISTANT_DEFECT:
             from .core import FHEOracle
@@ -610,7 +802,7 @@ class AutoOracle:
                 "use_heuristic_seeds": True,
                 "heuristic_k": 10,
             }
-            kw.update(self.oracle_kwargs)
+            kw.update(okw)
 
             oracle = FHEOracle(
                 plaintext_fn=self.plaintext_fn,
@@ -620,17 +812,14 @@ class AutoOracle:
                 seed=seed,
                 **kw,
             )
-            self.last_oracle = oracle
-            result = oracle.run(
-                n_trials=remaining_budget, threshold=threshold, **run_kwargs
-            )
-            return self._attach_meta(result, regime, "robust_cma_es")
+            return self._finish(oracle, regime, "robust_cma_es", presearch,
+                                remaining_budget, threshold, run_kwargs)
 
         if regime == Regime.LOW_RANK_STRUCTURE:
             from .core import FHEOracle
 
             kw = {"separable": True}
-            kw.update(self.oracle_kwargs)
+            kw.update(okw)
 
             oracle = FHEOracle(
                 plaintext_fn=self.plaintext_fn,
@@ -640,23 +829,13 @@ class AutoOracle:
                 seed=seed,
                 **kw,
             )
-            self.last_oracle = oracle
-            result = oracle.run(
-                n_trials=remaining_budget, threshold=threshold, **run_kwargs
-            )
-            return self._attach_meta(result, regime, "separable_cma_es")
+            return self._finish(oracle, regime, "separable_cma_es", presearch,
+                                remaining_budget, threshold, run_kwargs)
 
         if regime == Regime.PREACTIVATION_DOMINATED:
-            from .preactivation import PreactivationOracle
-
-            preact = PreactivationOracle(
-                W=self.W,
-                b=self.b,
-                plaintext_fn=self.plaintext_fn,
-                fhe_fn=self.fhe_fn,
-                input_bounds=self.bounds,
-            )
-            results = preact.run(budget=remaining_budget, seeds=[seed])
+            preact = self._preactivation_oracle()
+            results = preact.run(budget=remaining_budget, seeds=[seed], threshold=threshold)
+            results[0].n_trials += self.probe_result.n_evals
             return self._attach_meta(results[0], regime, "preactivation")
 
         # STANDARD -- dispatch to full CMA-ES. An earlier version routed
@@ -676,10 +855,7 @@ class AutoOracle:
             input_dim=self.d,
             input_bounds=self.bounds,
             seed=seed,
-            **self.oracle_kwargs,
+            **okw,
         )
-        self.last_oracle = oracle
-        result = oracle.run(
-            n_trials=remaining_budget, threshold=threshold, **run_kwargs
-        )
-        return self._attach_meta(result, regime, "cma_es")
+        return self._finish(oracle, regime, "cma_es", presearch,
+                            remaining_budget, threshold, run_kwargs)

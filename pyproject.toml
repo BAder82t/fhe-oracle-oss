@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fhe-oracle"
-version = "0.6.0"
+version = "0.7.0"
 description = "Adversarial precision testing for FHE programs"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -22,6 +22,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Security :: Cryptography",
     "Topic :: Software Development :: Testing",
 ]
@@ -51,6 +52,10 @@ exclude = ["tests*", "benchmarks*", "research*"]
 
 [tool.ruff]
 extend-exclude = ["benchmarks", "research"]
+
+[tool.ruff.lint]
+# Explicit rules so ruff upgrades cannot change what CI enforces.
+select = ["E4", "E7", "E9", "F", "I", "BLE001", "S110", "S112", "B017"]
 
 [tool.mypy]
 files = ["fhe_oracle"]

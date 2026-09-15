@@ -116,3 +116,37 @@ def test_check_forwards_autooracle_kwargs():
 def test_check_rejects_undersized_budget():
     with pytest.raises(ValueError):
         check(_square, _square, input_bounds=[(-2.0, 2.0)] * 3, n_trials=10)
+
+
+_W = np.array([[1.0, 0.5, -0.3, 0.2]])
+_B = np.array([0.1])
+
+
+def _lr_plain(x):
+    return float(1.0 / (1.0 + np.exp(-(_W @ np.asarray(x) + _B)[0])))
+
+
+def _lr_taylor3(x):
+    z = float((_W @ np.asarray(x) + _B)[0])
+    return 0.5 + z / 4.0 - z ** 3 / 48.0
+
+
+@pytest.mark.parametrize("threshold,verdict", [(0.05, "FAIL"), (100.0, "PASS")])
+def test_check_preactivation_dispatch_reports_verdict(threshold, verdict):
+    result = check(_lr_plain, _lr_taylor3, [(-3.0, 3.0)] * 4, n_trials=200,
+                   threshold=threshold, W=_W, b=_B)
+    r = result.oracle_result
+    assert r.regime == "preactivation_dominated"
+    assert r.verdict == verdict
+    assert r.threshold == threshold
+    assert list(r.worst_input) == list(r.x)
+    assert result.shrink_result is None
+    assert f"**Verdict:** {verdict}" in result.report
+
+
+def test_check_preactivation_dispatch_json_report():
+    result = check(_lr_plain, _lr_taylor3, [(-3.0, 3.0)] * 4, n_trials=200,
+                   threshold=0.05, W=_W, b=_B, report_format="json")
+    payload = json.loads(result.report)
+    assert payload["verdict"] == "FAIL"
+    assert len(payload["worst_input"]) == 4

@@ -5,13 +5,13 @@ import numpy as np
 import pytest
 
 from fhe_oracle import EvaluationError, FHEOracle, check
+from fhe_oracle.cascade import CascadeSearch
 from fhe_oracle.cli import main
-from fhe_oracle.fitness import DivergenceFitness
 from fhe_oracle.empirical import EmpiricalSearch
+from fhe_oracle.fitness import DivergenceFitness
 from fhe_oracle.multi_output import MultiOutputFitness
 from fhe_oracle.preactivation import PreactivationOracle
 from fhe_oracle.subspace import SubspaceOracle
-from fhe_oracle.cascade import CascadeSearch
 
 
 def broken(x):

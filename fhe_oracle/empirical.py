@@ -59,6 +59,8 @@ class EmpiricalSearch:
         0.1 (per paper §6.7).
     seed : int
         RNG seed for reproducibility. Default 42.
+    bounds : list of (low, high), optional
+        Per-feature domain; every jittered sample is clipped to it. Default None (no clipping).
     """
 
     def __init__(
@@ -69,6 +71,7 @@ class EmpiricalSearch:
         budget: int = 500,
         jitter_std: float = 0.1,
         seed: int = 42,
+        bounds: Optional[list[tuple[float, float]]] = None,
     ) -> None:
         if budget <= 0:
             raise ValueError("budget must be positive")
@@ -81,6 +84,13 @@ class EmpiricalSearch:
             raise ValueError("data must be a 2-D array of shape (n, d)")
         if data_arr.shape[0] == 0:
             raise ValueError("data must contain at least one sample")
+        bounds_arr: Optional[np.ndarray] = None
+        if bounds is not None:
+            bounds_arr = np.asarray(bounds, dtype=np.float64)
+            if bounds_arr.shape != (data_arr.shape[1], 2):
+                raise ValueError("bounds must give one (low, high) pair per data column")
+            if np.any(bounds_arr[:, 0] > bounds_arr[:, 1]):
+                raise ValueError("bounds must satisfy low <= high")
 
         self.divergence_fn = divergence_fn
         self.data = data_arr
@@ -88,6 +98,7 @@ class EmpiricalSearch:
         self.budget = int(budget)
         self.jitter_std = float(jitter_std)
         self.seed = int(seed)
+        self.bounds = bounds_arr  # shape (d, 2) or None
 
     def run(self) -> EmpiricalResult:
         rng = np.random.default_rng(self.seed)
@@ -102,6 +113,8 @@ class EmpiricalSearch:
             x = self.data[idx].copy()
             if self.jitter_std > 0:
                 x = x + rng.normal(0.0, self.jitter_std, size=d)
+            if self.bounds is not None:
+                x = np.clip(x, self.bounds[:, 0], self.bounds[:, 1])
             err = finite_score(self.divergence_fn(x))
             if err > best_err:
                 best_err = err

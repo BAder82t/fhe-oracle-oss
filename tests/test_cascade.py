@@ -130,3 +130,58 @@ def test_cascade_unknown_kind_raises():
     )
     with pytest.raises(ValueError):
         cs.run(budget_cheap=10, seeds=[1], search_kind="bogus")
+
+
+def _square(x):
+    return float(np.sum(np.asarray(x) ** 2))
+
+
+def test_cascade_expensive_stage_uses_distinct_candidates():
+    # CMA-ES converges, so the raw top-K used to be repeats of one point.
+    d = 4
+    seen = []
+
+    def expensive(x):
+        seen.append(np.array(x, dtype=np.float64))
+        return _square(x) * 1.02
+
+    cs = CascadeSearch(
+        cheap_fhe_fn=lambda x: _square(x) * 1.01,
+        expensive_fhe_fn=expensive,
+        plaintext_fn=_square,
+        input_bounds=[(-1.0, 1.0)] * d,
+        top_k=20,
+    )
+    out = cs.run(budget_cheap=300, seeds=[3], search_kind="cma")
+    assert len(seen) == 20 == out[0].n_evals_expensive
+    pts = np.array(seen)
+    gaps = np.max(np.abs(pts[:, None, :] - pts[None, :, :]), axis=-1) / 2.0
+    assert np.all(gaps[~np.eye(len(pts), dtype=bool)] > 1e-3)
+
+
+def test_cascade_dedupe_handles_all_identical_candidates():
+    seen = []
+
+    def expensive(x):
+        seen.append(np.array(x, dtype=np.float64))
+        return 1.0
+
+    cs = CascadeSearch(
+        cheap_fhe_fn=lambda x: 0.5,
+        expensive_fhe_fn=expensive,
+        plaintext_fn=lambda x: 0.0,
+        input_bounds=[(0.5, 0.5)] * 2,  # zero-width box: every sample is identical
+        top_k=5,
+    )
+    out = cs.run(budget_cheap=30, seeds=[1], search_kind="random")
+    assert len(seen) == 1 == out[0].n_evals_expensive
+    assert out[0].max_error_expensive == 1.0
+
+
+@pytest.mark.parametrize("top_k", [0, -1])
+def test_cascade_rejects_nonpositive_top_k(top_k):
+    # top_k=0 skipped the expensive stage yet reported PASS.
+    with pytest.raises(ValueError, match="top_k"):
+        CascadeSearch(lambda x: 1.0, lambda x: 1.0, lambda x: 1.0,
+                      [(-1.0, 1.0)] * 2, top_k=top_k)
+

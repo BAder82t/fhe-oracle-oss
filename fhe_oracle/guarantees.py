@@ -14,6 +14,8 @@ The certificate provides:
   multiplicative form.
 - `budget_for(eta, p)`: minimum B_rand such that P[≥1 hit] ≥ p,
   given assumed μ_τ = eta.
+- `violating_fraction_upper_bound(confidence)`: one-sided Clopper–Pearson
+  upper bound on μ_τ from the k hits, with no assumption about μ_τ.
 
 See `research/future-work/09-formal-budget-failure-prob-guarantees.md`
 and `research/experiment-plan/A4-formal-chernoff-bound.md`.
@@ -24,6 +26,8 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass, field
 from typing import Optional
+
+from scipy.stats import beta
 
 
 @dataclass(frozen=True)
@@ -94,6 +98,18 @@ class CoverageCertificate:
         if eta == 0.0:
             return 0.0
         return 1.0 - (1.0 - eta) ** self.budget_rand
+
+    def violating_fraction_upper_bound(self, confidence: float = 0.95) -> float:
+        """One-sided Clopper–Pearson upper bound on the violating share of the domain.
+
+        Covers the uniform random phase only. On noisy backends it bounds the
+        probability that one noisy evaluation of a uniform input meets threshold.
+        """
+        if not (0.0 < confidence < 1.0):
+            raise ValueError("confidence must be in (0, 1)")
+        if self.hits == self.budget_rand:
+            return 1.0
+        return float(beta.ppf(confidence, self.hits + 1, self.budget_rand - self.hits))
 
 
 def confidence_adjusted_pass(

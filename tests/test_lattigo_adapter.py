@@ -22,13 +22,12 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from fhe_oracle.adapters.lattigo import (
+    LattigoPrecisionRow,
     LattigoProbe,
     LattigoProbeError,
-    LattigoPrecisionRow,
     _checked_float,
     _parse_csv,
 )
-
 
 _BINARY = (
     Path(__file__).resolve().parents[1]

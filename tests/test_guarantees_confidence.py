@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-
 import pytest
 
 from fhe_oracle.guarantees import CoverageCertificate, confidence_adjusted_pass

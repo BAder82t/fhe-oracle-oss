@@ -38,6 +38,7 @@ from .diagnostics import (
 from .differential import CrossAdapterFitness, differential_test
 from .diversity import DiversityInjector, InjectionStrategy
 from .empirical import EmpiricalResult, EmpiricalSearch
+from .evallog import JsonlEvaluationLog, read_log, replay
 from .fitness import DivergenceFitness, EvaluationError
 from .guarantees import CoverageCertificate, confidence_adjusted_pass
 from .hybrid import HybridResult, run_hybrid
@@ -65,6 +66,7 @@ __all__ = [
     "FHEOracle",
     "HybridResult",
     "InjectionStrategy",
+    "JsonlEvaluationLog",
     "InstrumentedFitness",
     "MultiOutputFitness",
     "MultiOutputMode",
@@ -89,6 +91,8 @@ __all__ = [
     "evaluate_correlation",
     "localize_fault",
     "per_op_trace",
+    "read_log",
+    "replay",
     "run_hybrid",
 ]
 try:

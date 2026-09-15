@@ -75,7 +75,7 @@ def _load_entry_points(kind: str) -> None:
         for ep in eps:
             try:
                 obj = ep.load()
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001 - plugin isolation; failure is reported via warnings
                 warnings.warn(
                     f"fhe-oracle: failed to load {kind} plugin "
                     f"{ep.name!r} from {ep.value!r}: {exc}",

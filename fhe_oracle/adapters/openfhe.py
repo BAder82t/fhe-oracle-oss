@@ -13,12 +13,16 @@ Example
 -------
     from fhe_oracle.adapters.openfhe import OpenFHEAdapter
 
-    def my_fhe_fn(cc, ct):
-        return cc.EvalMult(ct, ct)  # element-wise square
+    def lr_program(cc, ct):  # z = w . x + b lands in slot 0
+        prod = cc.EvalMult(ct, cc.MakeCKKSPackedPlaintext(weights))
+        return cc.EvalAdd(cc.EvalSum(prod, 8), bias)
 
     adapter = OpenFHEAdapter(
-        fhe_fn=my_fhe_fn, n_features=4, mult_depth=2
+        fhe_fn=lr_program, n_features=8, mult_depth=2, output_length=1
     )
+
+``output_length`` is the number of leading slots holding the program's result;
+it defaults to ``n_features`` for element-wise programs such as ``cc.EvalMult(ct, ct)``.
 """
 
 from __future__ import annotations
@@ -38,18 +42,26 @@ class OpenFHEAdapter(FHEAdapter):
         mult_depth: int = 2,
         scale_mod_size: int = 50,
         security_level: int = 128,
+        output_length: int | None = None,
     ) -> None:
         try:
             import openfhe  # noqa: F401
-        except ImportError:
+        except ImportError as exc:
             raise RuntimeError(
-                "OpenFHE Python bindings are not installed. "
+                f"OpenFHE Python bindings are not importable ({exc}). "
                 "Install with: pip install openfhe"
-            )
+            ) from exc
 
         self._fhe_fn = fhe_fn
         self._n_features = n_features
         self._mult_depth = mult_depth
+        self._scale_mod_size = scale_mod_size
+        self._batch_size = 1 << max(0, n_features - 1).bit_length()
+        self._output_length = n_features if output_length is None else output_length
+        if not 1 <= self._output_length <= self._batch_size:
+            raise ValueError(
+                f"output_length must be in [1, {self._batch_size}], got {self._output_length}"
+            )
         self._cc, self._kp = self._setup_context(
             mult_depth, scale_mod_size, n_features, security_level
         )
@@ -61,8 +73,8 @@ class OpenFHEAdapter(FHEAdapter):
 
     def decrypt(self, ciphertext: Any) -> list[float]:
         pt = self._cc.Decrypt(self._kp.secretKey, ciphertext)
-        values = pt.GetRealPackedValue()
-        return list(values[: self._n_features])
+        pt.SetLength(self._output_length)
+        return list(pt.GetRealPackedValue()[: self._output_length])
 
     def run_fhe_program(self, ciphertext: Any) -> Any:
         return self._fhe_fn(self._cc, ciphertext)
@@ -70,16 +82,16 @@ class OpenFHEAdapter(FHEAdapter):
     def get_noise_budget(self, ciphertext: Any) -> float:
         try:
             level_used = ciphertext.GetLevel()
-            total_bits = self._mult_depth * 50
-            consumed_bits = level_used * 50
+            total_bits = self._mult_depth * self._scale_mod_size
+            consumed_bits = level_used * self._scale_mod_size
             return max(0.0, float(total_bits - consumed_bits))
-        except Exception:
-            return max(0.0, float(self._mult_depth * 50))
+        except Exception:  # noqa: BLE001 - metadata-only fallback; max_error and verdict unaffected
+            return max(0.0, float(self._mult_depth * self._scale_mod_size))
 
     def get_mult_depth_used(self, ciphertext: Any) -> int:
         try:
             return int(ciphertext.GetLevel())
-        except Exception:
+        except Exception:  # noqa: BLE001 - metadata-only fallback; max_error and verdict unaffected
             return 0
 
     def get_scheme_name(self) -> str:
@@ -94,15 +106,10 @@ class OpenFHEAdapter(FHEAdapter):
     ) -> tuple[Any, Any]:
         import openfhe
 
-        batch = 1
-        while batch < n_features:
-            batch <<= 1
-        self._batch_size = batch
-
         params = openfhe.CCParamsCKKSRNS()
         params.SetMultiplicativeDepth(mult_depth)
         params.SetScalingModSize(scale_mod_size)
-        params.SetBatchSize(batch)
+        params.SetBatchSize(self._batch_size)
 
         sec_map = {
             128: openfhe.SecurityLevel.HEStd_128_classic,
@@ -116,6 +123,7 @@ class OpenFHEAdapter(FHEAdapter):
         cc = openfhe.GenCryptoContext(params)
         cc.Enable(openfhe.PKESchemeFeature.PKE)
         cc.Enable(openfhe.PKESchemeFeature.LEVELEDSHE)
+        cc.Enable(openfhe.PKESchemeFeature.ADVANCEDSHE)  # EvalSumKeyGen throws without it
 
         kp = cc.KeyGen()
         cc.EvalMultKeyGen(kp.secretKey)

@@ -60,18 +60,21 @@ Usage
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Callable, Iterable
+from typing import Any, Callable, Iterable, Optional
 
 import numpy as np
 
-from .fitness import DivergenceFitness
-
 from .core import FHEOracle
+from .evallog import EventSink, _event
+from .fitness import absolute_error, evaluate_outputs, finite_score
 
 
 @dataclass
 class PreactivationResult:
-    """Single-seed preactivation-search outcome."""
+    """Single-seed preactivation-search outcome.
+
+    ``verdict`` is None until a threshold is applied (``run(threshold=...)`` or ``apply_threshold``).
+    """
 
     seed: int
     max_error: float
@@ -81,6 +84,21 @@ class PreactivationResult:
     n_trials: int
     elapsed_seconds: float = 0.0
     extra: dict = field(default_factory=dict)
+    threshold: Optional[float] = None
+    verdict: Optional[str] = None
+    worst_input: Optional[list[float]] = None  # copy of x, for OracleResult parity
+    scheme: str = "fhe_fn"
+    noise_state: dict = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if self.worst_input is None:
+            self.worst_input = list(self.x)
+
+    def apply_threshold(self, threshold: float) -> "PreactivationResult":
+        """Set ``threshold`` and the matching PASS/FAIL ``verdict``."""
+        self.threshold = float(threshold)
+        self.verdict = "PASS" if self.max_error < self.threshold else "FAIL"
+        return self
 
 
 class _PreactivationFitness:
@@ -89,29 +107,23 @@ class _PreactivationFitness:
     F(z) = |plain(x) - fhe(x)| - clip_penalty * ||x_raw - x_clipped||
 
     where ``x_raw = W^+(z - b)`` and ``x_clipped`` is x_raw clipped to
-    the input box. Exceptions yield 0.0 so a single bad evaluation
-    doesn't crash CMA-ES.
+    the input box. Invalid evaluations raise ``EvaluationError``.
     """
 
     def __init__(
         self,
         z_to_x: Callable[[np.ndarray], tuple[np.ndarray, float]],
-        plaintext_fn: Callable,
-        fhe_fn: Callable,
+        measure: Callable[[np.ndarray], float],
         clip_penalty: float,
-        output_reducer: Callable[[np.ndarray], float] = np.max,
     ) -> None:
         self._z_to_x = z_to_x
-        self._plain = plaintext_fn
-        self._fhe = fhe_fn
+        self._measure = measure
         self._clip_penalty = float(clip_penalty)
-        self._reduce = output_reducer
 
     def score(self, z) -> float:
         z_arr = np.asarray(z, dtype=np.float64).ravel()
         x, clip_dist = self._z_to_x(z_arr)
-        div = DivergenceFitness(self._plain, self._fhe, self._reduce).score(x)
-        return div - self._clip_penalty * float(clip_dist)
+        return self._measure(x) - self._clip_penalty * float(clip_dist)
 
 
 class PreactivationOracle:
@@ -136,6 +148,9 @@ class PreactivationOracle:
         input box. Set to 0.0 to disable.
     output_reducer : callable, default np.max
         Reduction over the absolute-difference vector.
+    on_evaluation : callable, optional
+        One event per model evaluation: input-space ``x`` and its max absolute error
+        (kinds ``search``, ``remeasure``). Pass it here, not to :meth:`run`.
     """
 
     def __init__(
@@ -147,6 +162,7 @@ class PreactivationOracle:
         input_bounds: list[tuple[float, float]],
         clip_penalty: float = 0.1,
         output_reducer: Callable[[np.ndarray], float] = np.max,
+        on_evaluation: Optional[EventSink] = None,
     ) -> None:
         self.W = np.atleast_2d(np.asarray(W, dtype=np.float64))
         self.b = np.atleast_1d(np.asarray(b, dtype=np.float64)).astype(np.float64)
@@ -167,6 +183,8 @@ class PreactivationOracle:
         self._fhe = fhe_fn
         self._clip_penalty = float(clip_penalty)
         self._reduce = output_reducer
+        self._on_evaluation = on_evaluation
+        self._n_events = 0
 
     # ----- Geometry helpers -----------------------------------------
 
@@ -203,15 +221,24 @@ class PreactivationOracle:
     def _build_fitness(self) -> _PreactivationFitness:
         return _PreactivationFitness(
             z_to_x=self.z_to_x,
-            plaintext_fn=self._plain,
-            fhe_fn=self._fhe,
+            measure=self._measure,
             clip_penalty=self._clip_penalty,
-            output_reducer=self._reduce,
         )
 
     def measure_divergence_at(self, x) -> float:
-        """Pure |plain(x) - fhe(x)| at a given x, reducer-aggregated."""
-        return DivergenceFitness(self._plain, self._fhe, self._reduce).score(x)
+        """Pure |plain(x) - fhe(x)| at a given x, reducer-aggregated; logged as ``remeasure``."""
+        return self._measure(x, "remeasure")
+
+    def _measure(self, x: Any, kind: str = "search") -> float:
+        """Reducer-aggregated divergence at x; the event logs the max error, as ``replay`` does."""
+        error = absolute_error(*evaluate_outputs(self._plain, self._fhe, x))
+        divergence = finite_score(self._reduce(error))
+        if self._on_evaluation is not None:
+            key = "error" if kind == "remeasure" else "score"
+            event = _event(self._n_events, kind, x, **{key: float(error.max())})
+            self._n_events += 1
+            self._on_evaluation(event)
+        return divergence
 
     def run(
         self,
@@ -221,6 +248,7 @@ class PreactivationOracle:
         warm_start: bool = True,
         sigma0: float = 1.0,
         separable: bool = False,
+        threshold: Optional[float] = None,
         **oracle_kwargs: Any,
     ) -> list[PreactivationResult]:
         """Run search in z-space across seeds.
@@ -229,9 +257,15 @@ class PreactivationOracle:
         grid + uniform-random sampler at k=1 because pycma's
         ``_stds_into_limits`` is unstable in 1-D under our bounds
         (raises ``ValueError: not yet initialized``).
+
+        ``threshold`` sets each result's verdict. Each seed spends ``budget``
+        evaluations (at least 9 at k=1) plus one witness re-measurement.
         """
+        if "on_evaluation" in oracle_kwargs:  # the inner FHEOracle would log z-space events
+            raise TypeError("pass on_evaluation to PreactivationOracle(), not run()")
+        self._n_events = 0  # event numbering restarts each run, as in FHEOracle
         if self.k == 1:
-            return self._run_1d(budget=budget, seeds=seeds)
+            return _judge(self._run_1d(budget=budget, seeds=seeds), threshold)
 
         z_lo, z_hi = self.z_bounds()
         z_bounds_list = list(zip(z_lo.tolist(), z_hi.tolist()))
@@ -272,7 +306,7 @@ class PreactivationOracle:
                 n_trials=res.n_trials,
                 elapsed_seconds=res.elapsed_seconds,
             ))
-        return results
+        return _judge(results, threshold)
 
     def _run_1d(
         self,
@@ -337,6 +371,15 @@ class PreactivationOracle:
 
 
 # --- helpers --------------------------------------------------------
+
+
+def _judge(
+    results: list[PreactivationResult], threshold: Optional[float]
+) -> list[PreactivationResult]:
+    if threshold is not None:
+        for r in results:
+            r.apply_threshold(threshold)
+    return results
 
 
 def _to_array(value) -> np.ndarray:

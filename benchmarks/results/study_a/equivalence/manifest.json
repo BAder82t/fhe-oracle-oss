@@ -1,0 +1,10 @@
+{
+ "reference": {
+  "file": "autoconfig_accounting_only_v5.py",
+  "sha256": "006f9ca2ec7b8bb8a21a43b921d5887c518de0138000db9f5f829eb320584c72"
+ },
+ "equivalence_check": {
+  "file": "equivalence_check.json",
+  "sha256": "254e832cf2c35434d3a4315cc2063f8b342e156a15937a504fec7d2014518ddb"
+ }
+}

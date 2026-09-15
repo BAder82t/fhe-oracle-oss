@@ -12,9 +12,8 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from .fitness import DivergenceFitness
-
 from .core import FHEOracle, OracleResult
+from .fitness import DivergenceFitness
 
 
 class CrossAdapterFitness:

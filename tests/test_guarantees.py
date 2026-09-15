@@ -4,12 +4,12 @@
 
 from __future__ import annotations
 
+import dataclasses
 import math
 
 import pytest
 
 from fhe_oracle.guarantees import CoverageCertificate
-
 
 # --- budget_for arithmetic ---
 
@@ -127,5 +127,46 @@ def test_p_discovery_zero_hits_zero():
 def test_ctor_frozen():
     """Dataclass is frozen; fields cannot be rebound."""
     cert = CoverageCertificate(budget_rand=10, threshold=0.01, hits=1, mu_hat=0.1)
-    with pytest.raises(Exception):
+    with pytest.raises(dataclasses.FrozenInstanceError):
         cert.hits = 2  # type: ignore[misc]
+
+
+# --- violating_fraction_upper_bound (Clopper-Pearson) ---
+
+def _cert(hits, n):
+    return CoverageCertificate(budget_rand=n, threshold=0.01, hits=hits, mu_hat=hits / n)
+
+
+def test_upper_bound_zero_hits_closed_form():
+    assert _cert(0, 200).violating_fraction_upper_bound(0.95) == pytest.approx(
+        1.0 - 0.05 ** (1.0 / 200))
+
+
+def test_upper_bound_matches_beta_quantile():
+    from scipy.stats import beta
+
+    assert _cert(5, 200).violating_fraction_upper_bound(0.99) == pytest.approx(
+        beta.ppf(0.99, 6, 195))
+
+
+def test_upper_bound_edge_cases_and_monotone():
+    assert _cert(10, 10).violating_fraction_upper_bound() == 1.0
+    assert _cert(1, 50).violating_fraction_upper_bound() > _cert(0, 50).violating_fraction_upper_bound()
+    for bad in (0.0, 1.0, 1.5):
+        with pytest.raises(ValueError):
+            _cert(0, 10).violating_fraction_upper_bound(bad)
+
+
+def test_upper_bound_from_random_floor_run():
+    import numpy as np
+
+    from fhe_oracle import FHEOracle
+
+    def sq(x):
+        return float(np.sum(np.asarray(x) ** 2))
+
+    result = FHEOracle(sq, sq, input_dim=2, input_bounds=[(-1.0, 1.0)] * 2,
+                       seed=0, random_floor=0.5).run(n_trials=100, threshold=1e-6)
+    cert = result.coverage_certificate
+    assert cert is not None and cert.hits == 0
+    assert cert.mu_hat <= cert.violating_fraction_upper_bound() < 0.06

@@ -37,7 +37,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterator, Optional, Sequence
 
-
 # Default location only valid in a source checkout where benchmarks/
 # sits two levels above fhe_oracle/adapters/. PyPI installs exclude
 # benchmarks/ from the wheel, so users on a pip install must build

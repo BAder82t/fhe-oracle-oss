@@ -9,7 +9,6 @@ import pytest
 
 from fhe_oracle.subspace import SubspaceOracle
 
-
 # --- geometry ----------------------------------------------------------
 
 

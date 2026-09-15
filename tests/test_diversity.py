@@ -10,7 +10,6 @@ import pytest
 from fhe_oracle import FHEOracle
 from fhe_oracle.diversity import DiversityInjector, InjectionStrategy
 
-
 # --- DiversityInjector unit tests ------------------------------------
 
 

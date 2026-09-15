@@ -478,7 +478,7 @@ class SubspaceOracle:
                 threshold=float(threshold),
                 n_trials=int(n_trials),
                 elapsed_seconds=0.0,
-                scheme="plaintext-diff",
+                scheme="fhe_fn",
             )
         else:
             best_result.worst_input = best_x.tolist()

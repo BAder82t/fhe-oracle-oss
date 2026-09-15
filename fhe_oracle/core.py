@@ -20,6 +20,7 @@ Public API
 from __future__ import annotations
 
 import time
+import warnings
 from dataclasses import dataclass, field
 from typing import Any, Callable, Optional
 
@@ -62,7 +63,8 @@ class OracleResult:
     Attributes
     ----------
     verdict : str
-        "PASS" if max_error < threshold, else "FAIL".
+        "FAIL" if a counted evaluation or the re-measurement met the
+        threshold (or flipped the class in rank modes), else "PASS".
     max_error : float
         Largest divergence |plaintext_fn(x) - fhe_fn(x)| observed.
     worst_input : list[float]
@@ -74,11 +76,19 @@ class OracleResult:
     elapsed_seconds : float
         Wall-clock search time.
     scheme : str
-        FHE scheme name (from adapter) or "plaintext-diff" in pure mode.
+        FHE scheme name (from adapter), "fhe_fn" for a callable, or "custom-fitness".
     noise_state : dict[str, float | str]
         Noise-budget snapshot at worst_input when an adapter was used.
         Empty dict in pure-divergence mode. Holds a single ``"error"``
         string key instead if re-measurement raised.
+    search_max_error : float, optional
+        Largest error seen by a counted search evaluation when the fitness
+        measures error directly; a value at or above threshold means FAIL.
+    remeasured_error : float, optional
+        Error from the final re-measurement at ``worst_input``.
+    class_flip : bool, optional
+        Multi-output rank modes only: an argmax flip was seen during
+        search or at the re-measurement; a flip means FAIL.
     strategy_used, subspace_dim, n_projections, n_anchors,
     projection_index, probe_max, fallback_taken
         Set only by :class:`~fhe_oracle.subspace.SubspaceOracle`;
@@ -91,7 +101,7 @@ class OracleResult:
     threshold: float
     n_trials: int
     elapsed_seconds: float
-    scheme: str = "plaintext-diff"
+    scheme: str = "fhe_fn"
     noise_state: dict[str, float | str] = field(default_factory=dict)
     coverage_certificate: Optional["CoverageCertificate"] = None
     n_restarts_used: int = 0
@@ -105,6 +115,9 @@ class OracleResult:
     projection_index: Optional[int] = None
     probe_max: Optional[float] = None
     fallback_taken: Optional[bool] = None
+    search_max_error: Optional[float] = None
+    remeasured_error: Optional[float] = None
+    class_flip: Optional[bool] = None
 
     def __repr__(self) -> str:
         return (
@@ -129,9 +142,9 @@ class ShrinkResult:
     original_norm, shrunk_norm : float
         Euclidean distance from the reference point for each input.
     max_error : float
-        Divergence re-measured at ``shrunk_input``. Always meets
-        ``threshold``: shrink retreats toward the original witness when a
-        noisy re-measurement does not.
+        Lowest confirming re-measurement at ``shrunk_input``; always meets
+        ``threshold``. On noisy backends the point must clear the threshold
+        by the measurement spread, else shrink retreats toward the original.
     threshold : float
         The PASS/FAIL threshold ``shrunk_input`` was constrained to
         keep meeting (copied from the source ``OracleResult``).
@@ -236,6 +249,8 @@ class FHEOracle:
         multi_output: bool = False,
         multi_output_mode: str = "combined",
         rank_weight: float = 1.0,
+        batch_fhe_fn: Optional[Callable[[list[list[float]]], Any]] = None,
+        on_evaluation: Optional[Callable[[dict[str, Any]], None]] = None,
     ) -> None:
         if input_dim <= 0:
             raise ValueError("input_dim must be a positive integer")
@@ -243,6 +258,13 @@ class FHEOracle:
         if fitness is None and fhe_fn is None and adapter is None:
             raise ValueError(
                 "Provide one of: fhe_fn, adapter, or a custom fitness object."
+            )
+        if batch_fhe_fn is not None and (
+            fhe_fn is None or fitness is not None or adapter is not None
+        ):
+            raise ValueError(
+                "batch_fhe_fn needs fhe_fn and the built-in fitness "
+                "(no adapter or custom fitness object)"
             )
 
         if not (0.0 <= random_floor <= 1.0):
@@ -285,7 +307,8 @@ class FHEOracle:
         self._separable = bool(separable)
         self.w_div = float(w_div)
         self._scheme = (
-            adapter.get_scheme_name() if adapter is not None else "plaintext-diff"
+            adapter.get_scheme_name() if adapter is not None
+            else ("fhe_fn" if fhe_fn is not None else "custom-fitness")
         )
 
         if fitness is not None:
@@ -331,6 +354,10 @@ class FHEOracle:
             # are both None.
             assert fhe_fn is not None
             self._fitness = DivergenceFitness(plaintext_fn, fhe_fn)
+
+        self._batch_fhe_fn = batch_fhe_fn
+        self._on_evaluation = on_evaluation
+        self._n_events = 0
 
         # Adaptive + diversity configuration (default OFF -> existing
         # behaviour is bit-identical to v0.3.x).
@@ -400,6 +427,9 @@ class FHEOracle:
 
         best_input = list(self._x0)
         best_score = -np.inf
+        self._n_events = 0
+        if isinstance(self._fitness, MultiOutputFitness):
+            self._fitness.reset_observations()
         total_evals = 0
         certificate: Optional[CoverageCertificate] = None
         cma_x0 = list(self._x0)
@@ -423,9 +453,9 @@ class FHEOracle:
             hits = 0
             best_rand_x = None
             best_rand_score = -np.inf
-            for _ in range(b_rand):
-                x = rng_floor.uniform(lows, highs)
-                score = self._score(list(x))
+            floor_xs = [rng_floor.uniform(lows, highs) for _ in range(b_rand)]
+            floor_scores = self._score_batch([list(x) for x in floor_xs])
+            for x, score in zip(floor_xs, floor_scores):
                 total_evals += 1
                 if score > best_rand_score:
                     best_rand_score = score
@@ -460,7 +490,7 @@ class FHEOracle:
                 "tolfun": 1e-15,
             }
             if self._seed is not None:
-                options["seed"] = self._seed
+                options["seed"] = _cma_seed(self._seed)
             if self._bounds is not None:
                 lows_b = [lo for lo, _ in self._bounds]
                 highs_b = [hi for _, hi in self._bounds]
@@ -541,13 +571,23 @@ class FHEOracle:
                         solutions[-(i + 1)] = list(injections[i])
                     diversity_injections += n_replace
 
-                fitnesses = [self._score(list(s)) for s in solutions]
+                # Stay within n_trials; a partial generation is not told.
+                # Adaptive mode may extend the budget, so it is exempt.
+                truncated = (
+                    adaptive_budget is None
+                    and len(solutions) > b_cma - cma_evals
+                )
+                if truncated:
+                    solutions = solutions[: b_cma - cma_evals]
+                fitnesses = self._score_batch([list(s) for s in solutions])
                 for sol, s in zip(solutions, fitnesses):
                     total_evals += 1
                     cma_evals += 1
                     if s > best_score:
                         best_score = s
                         best_input = list(sol)
+                if truncated:
+                    break
 
                 if adaptive_budget is not None:
                     adaptive_budget.record(
@@ -590,13 +630,19 @@ class FHEOracle:
                     and adaptive_budget.should_extend()
                 ):
                     extra = adaptive_budget.extension_budget()
-                    b_cma += extra
-                    adaptive_extensions_used += 1
-                    # pycma reads maxfevals lazily through stop(); update.
+                    # pycma reads maxfevals lazily through stop(); count the
+                    # extension only if pycma accepted it.
                     try:
-                        es.opts.set({"maxfevals": b_cma})
-                    except Exception:
-                        pass
+                        es.opts.set({"maxfevals": b_cma + extra})
+                    except (AttributeError, KeyError, TypeError, ValueError) as exc:
+                        warnings.warn(
+                            f"fhe-oracle: could not extend the CMA-ES budget: {exc}",
+                            RuntimeWarning,
+                            stacklevel=2,
+                        )
+                    else:
+                        b_cma += extra
+                        adaptive_extensions_used += 1
 
                 if cma_evals >= b_cma:
                     break
@@ -648,7 +694,7 @@ class FHEOracle:
                     "bounds": [lows_b, highs_b],
                 }
                 if self._seed is not None:
-                    run_options["seed"] = self._seed + run_index + 1
+                    run_options["seed"] = _cma_seed(self._seed + run_index + 1)
                 if self._separable:
                     run_options["CMA_diagonal"] = True
 
@@ -685,15 +731,19 @@ class FHEOracle:
                 stall_count = 0
                 while not es.stop() and cma_evals_total < b_cma:
                     solutions = es.ask()
-                    fitnesses = [
-                        self._score(list(s)) for s in solutions
-                    ]
+                    remaining = b_cma - cma_evals_total
+                    truncated = len(solutions) > remaining
+                    if truncated:
+                        solutions = solutions[:remaining]
+                    fitnesses = self._score_batch([list(s) for s in solutions])
                     for sol, s in zip(solutions, fitnesses):
                         total_evals += 1
                         cma_evals_total += 1
                         if s > best_score:
                             best_score = s
                             best_input = list(sol)
+                    if truncated:
+                        break
                     es.tell(solutions, [-f for f in fitnesses])
 
                     # Stall detection on GLOBAL best.
@@ -718,8 +768,33 @@ class FHEOracle:
 
         elapsed = time.perf_counter() - t0
 
-        max_error, noise_state = self._measure_divergence(best_input, best_score)
-        verdict = "PASS" if max_error < threshold else "FAIL"
+        remeasured, noise_state, flip = self._measure_divergence(
+            best_input, best_score
+        )
+        if self._adapter is not None or self._fhe_fn is not None:
+            self._emit("remeasure", best_input, error=remeasured)
+        rank_mode = (
+            isinstance(self._fitness, MultiOutputFitness)
+            and self._fitness.mode != MultiOutputMode.MAX_ABSOLUTE
+        )
+        search_max: Optional[float] = None
+        if isinstance(self._fitness, DivergenceFitness) and self._fitness._reduce is np.max:
+            search_max = float(best_score)
+        elif isinstance(self._fitness, MultiOutputFitness):
+            search_max = self._fitness.max_abs_seen
+            if rank_mode:
+                flip = bool(flip or self._fitness.flip_seen)
+        # A violation seen during search is a FAIL even when a noisy
+        # re-measurement of the same input lands below threshold.
+        max_error = remeasured
+        if search_max is not None and not rank_mode:
+            max_error = max(remeasured, search_max)
+        failed = (
+            max_error >= threshold
+            or bool(flip)
+            or (search_max is not None and search_max >= threshold)
+        )
+        verdict = "FAIL" if failed else "PASS"
 
         return OracleResult(
             verdict=verdict,
@@ -735,6 +810,9 @@ class FHEOracle:
             adaptive_stop_reason=adaptive_stop_reason,
             adaptive_extensions_used=adaptive_extensions_used,
             diversity_injections=diversity_injections,
+            search_max_error=search_max,
+            remeasured_error=remeasured,
+            class_flip=flip if rank_mode else None,
         )
 
     def shrink(
@@ -799,7 +877,7 @@ class FHEOracle:
         def _still_fails(candidate: np.ndarray) -> bool:
             nonlocal n_evals
             n_evals += 1
-            return self._score(candidate.tolist()) >= threshold
+            return self._score(candidate.tolist(), kind="shrink") >= threshold
 
         if self._seed is not None:
             order = np.random.default_rng(
@@ -808,8 +886,8 @@ class FHEOracle:
         else:
             order = np.arange(dim)
 
-        # Reserve evaluations to re-confirm the final witness.
-        search_budget = max_evals - min(10, max(1, max_evals // 10))
+        # Reserve evaluations to confirm the final witness.
+        search_budget = max_evals - min(30, max(3, max_evals // 5))
         per_coord_budget = max(1, search_budget // max(int(dim), 1))
 
         for i in order:
@@ -837,18 +915,38 @@ class FHEOracle:
             n_evals += 1
             xs = candidate.tolist()
             no_model = self._adapter is None and self._fhe_fn is None
-            fallback = self._score(xs) if no_model else 0.0
-            return self._measure_divergence(xs, fallback)[0]
+            fallback = self._score(xs, kind="shrink_verify") if no_model else 0.0
+            error = self._measure_divergence(xs, fallback)[0]
+            if not no_model:
+                self._emit("shrink_verify", xs, error=error)
+            return error
 
-        # A boundary point accepted on one noisy evaluation can re-measure
-        # below threshold; retreat toward the original witness until it fails.
-        max_error = _measured(x)
-        while max_error < threshold and n_evals < max_evals:
-            x = x + 0.5 * (original - x)
-            max_error = _measured(x)
-        if max_error < threshold:
+        def _confirmed(candidate: np.ndarray) -> Optional[float]:
+            # Up to 5 re-measurements; an exact repeat means a deterministic
+            # backend. Noisy points must clear threshold by the observed spread.
+            values = [_measured(candidate)]
+            while values[-1] >= threshold and len(values) < 5:
+                if n_evals >= max_evals:
+                    return None
+                values.append(_measured(candidate))
+                if values[-1] == values[0]:
+                    return values[0]
+            lo, hi = min(values), max(values)
+            return lo if lo - threshold >= hi - lo else None
+
+        # A boundary point accepted on one noisy evaluation often fails on
+        # replay; step back toward the original witness until it is confirmed.
+        confirmed = _confirmed(x)
+        base, step = x.copy(), 0.01
+        while confirmed is None and step <= 1.0 and n_evals < max_evals:
+            x = base + step * (original - base)
+            confirmed = _confirmed(x)
+            step *= 2
+        if confirmed is None:
             x = original.copy()
             max_error = float(result.max_error)
+        else:
+            max_error = confirmed
 
         return ShrinkResult(
             original_input=original.tolist(),
@@ -860,12 +958,43 @@ class FHEOracle:
             n_evals=n_evals,
         )
 
-    def _score(self, x: list[float]) -> float:
-        return finite_score(self._fitness.score(x))
+    def _score(self, x: list[float], kind: str = "search") -> float:
+        score = finite_score(self._fitness.score(x))
+        self._emit(kind, x, score=score)
+        return score
+
+    def _emit(self, kind: str, x: list[float], **values: float) -> None:
+        if self._on_evaluation is None:
+            return
+        event: dict[str, Any] = {"index": self._n_events, "kind": kind,
+                                 "x": [float(v) for v in x]}
+        event.update({k: float(v) for k, v in values.items()})
+        self._n_events += 1
+        self._on_evaluation(event)
+
+    def _score_batch(self, xs: list[list[float]]) -> list[float]:
+        """Score candidates in order, via ``batch_fhe_fn`` when one was given."""
+        if self._batch_fhe_fn is None or not xs:
+            return [self._score(x) for x in xs]
+        try:
+            outputs = list(self._batch_fhe_fn(xs))
+        except Exception as exc:
+            raise EvaluationError(f"batch model evaluation failed: {exc}") from exc
+        if len(outputs) != len(xs):
+            raise EvaluationError(
+                f"batch_fhe_fn returned {len(outputs)} outputs for {len(xs)} inputs"
+            )
+        scores = [
+            finite_score(self._fitness.score_with_output(x, out))
+            for x, out in zip(xs, outputs)
+        ]
+        for x, score in zip(xs, scores):
+            self._emit("search", x, score=score)
+        return scores
 
     def _measure_divergence(
         self, x: list[float], fallback_score: float
-    ) -> tuple[float, dict[str, float | str]]:
+    ) -> tuple[float, dict[str, float | str], Optional[bool]]:
         """Re-evaluate x in pure-divergence terms and capture noise state.
 
         Falls back to ``fallback_score`` (the fitness score already
@@ -878,7 +1007,7 @@ class FHEOracle:
         """
         noise_state: dict[str, float | str] = {}
         if self._adapter is None and self._fhe_fn is None:
-            return finite_score(fallback_score), noise_state
+            return finite_score(fallback_score), noise_state, None
         try:
             if self._adapter is not None:
                 ct_in = self._adapter.encrypt(x)
@@ -900,7 +1029,19 @@ class FHEOracle:
             max_error = float(absolute_error(plain_val, fhe_val).max())
         except Exception as exc:
             raise EvaluationError(f"final evaluation failed: {exc}") from exc
-        return max_error, noise_state
+        flip: Optional[bool] = None
+        if (
+            isinstance(self._fitness, MultiOutputFitness)
+            and self._fitness.mode != MultiOutputMode.MAX_ABSOLUTE
+        ):
+            p, f = np.ravel(plain_val), np.ravel(fhe_val)
+            flip = p.size > 1 and int(np.argmax(p)) != int(np.argmax(f))
+        return max_error, noise_state, flip
+
+
+def _cma_seed(seed: int) -> int:
+    # pycma seeds from the clock when given 0; map into its nonzero range.
+    return seed % (2**32 - 1) or 2**32 - 1
 
 
 def _normalise_bounds(
